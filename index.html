@@ -1,0 +1,1896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manila Survey Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --blue:#0070F2;--blue-dk:#0057C2;--blue-lt:#4CB1FF;
+  --bg:#FFFFFF;--bg2:#F5F6F7;--bg3:#E1E2E6;--accent:#E1F4FF;
+  --text:#000000;--text2:#6B7280;--border:#D9DADE;
+  --green:#008A35;--red:#C0392B;--orange:#E67E22;
+  --shadow:0 2px 8px rgba(0,0,0,.08);--sidebar:200px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'72 Brand','Segoe UI',Arial,sans-serif;font-size:13px;background:var(--bg2);color:var(--text);height:100vh;overflow:hidden}
+button{cursor:pointer;font-family:inherit;font-size:13px}
+input,select,textarea{font-family:inherit;font-size:13px}
+/* Login */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#E1F4FF 0%,#fff 60%,#F5F6F7 100%)}
+.login-card{background:#fff;border-radius:12px;padding:36px 48px 44px;box-shadow:0 4px 32px rgba(0,112,242,.12);max-width:460px;width:90%;text-align:center}
+.login-img{width:100%;max-width:360px;height:auto;margin:0 auto 20px;display:block;border-radius:8px}
+.login-title{font-size:22px;font-weight:700;margin-bottom:6px;color:var(--text)}
+.login-sub{font-size:14px;color:var(--text2);margin-bottom:32px}
+.btn-login{background:var(--blue);color:#fff;border:none;border-radius:6px;padding:12px 32px;font-size:14px;font-weight:600;cursor:pointer;width:100%;transition:.2s}
+.btn-login:hover{background:var(--blue-dk)}
+.btn-login:disabled{background:#9BBFE8;cursor:not-allowed;opacity:.8}
+.login-error{color:var(--red);font-size:12px;margin-top:12px;min-height:18px}
+/* App Shell */
+#app-shell{display:flex;height:100vh;overflow:hidden}
+/* Sidebar */
+.sidebar{width:var(--sidebar);min-width:var(--sidebar);background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.sidebar-logo{padding:16px 14px 12px;border-bottom:1px solid var(--border)}
+.sidebar-logo-title{font-size:13px;font-weight:700;color:var(--blue);line-height:1.3}
+.sidebar-logo-sub{font-size:10px;color:var(--text2)}
+.sidebar-nav{flex:1;overflow-y:scroll;padding:8px 0}
+.tab-btn{display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px;border:none;background:none;text-align:left;color:var(--text);border-left:3px solid transparent;transition:.15s;font-size:12px}
+.tab-btn:hover{background:var(--accent);color:var(--blue)}
+.tab-btn.active{background:var(--accent);color:var(--blue);font-weight:600;border-left-color:var(--blue)}
+.sidebar-section{padding:8px 14px 4px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.sidebar-footer{padding:10px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.btn-side{display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text);font-size:12px;width:100%;transition:.15s}
+.btn-side:hover{background:var(--bg2)}
+.btn-side.active{background:var(--accent);border-color:var(--blue);color:var(--blue)}
+/* Auto-refresh */
+.ar-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
+.ar-count{font-weight:600;color:var(--blue);min-width:22px}
+/* Main content */
+.main-content{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg2)}
+/* Filter bar */
+#filter-bar{background:#fff;border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.filter-label{font-size:11px;color:var(--text2);font-weight:600}
+.filter-select{padding:5px 10px;border:1px solid var(--border);border-radius:5px;background:#fff;color:var(--text);font-size:12px;min-width:130px}
+.btn-filter-clear{padding:5px 12px;border:1px solid var(--border);border-radius:5px;background:#fff;font-size:12px;color:var(--text2)}
+.btn-filter-clear:hover{background:var(--bg2)}
+/* Scrollable body */
+.body-scroll{flex:1;overflow-y:scroll;padding:14px 16px;display:flex;flex-direction:column;gap:14px}
+/* Always-visible scrollbar styling */
+::-webkit-scrollbar{width:7px;height:7px}
+::-webkit-scrollbar-track{background:var(--bg2);border-radius:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#aab2bb}
+::-webkit-scrollbar-corner{background:var(--bg2)}
+*{scrollbar-width:thin;scrollbar-color:var(--border) var(--bg2)}
+/* KPI row */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;flex-shrink:0}
+.kpi-card{background:#fff;border-radius:8px;padding:14px 16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px}
+.kpi-label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.kpi-value{font-size:26px;font-weight:700;line-height:1.1}
+.kpi-sub{font-size:11px;color:var(--text2)}
+.kpi-blue .kpi-value{color:var(--blue)}
+.kpi-green .kpi-value{color:var(--green)}
+.kpi-red .kpi-value{color:var(--red)}
+.kpi-orange .kpi-value{color:var(--orange)}
+/* Manager summary tiles */
+.mgr-tiles-row{display:flex;gap:12px;flex-shrink:0;flex-wrap:wrap}
+.mgr-tile{background:#fff;border-radius:8px;box-shadow:var(--shadow);padding:14px 18px;flex:1;min-width:220px;display:flex;flex-direction:column;gap:10px;border-top:3px solid var(--blue)}
+.mgr-tile-name{font-size:12px;font-weight:700;color:var(--text);letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mgr-tile-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.mgr-metric{display:flex;flex-direction:column;gap:2px}
+.mgr-metric-label{font-size:9px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.mgr-metric-val{font-size:17px;font-weight:700;line-height:1.15}
+.mgr-metric-val.m-blue{color:var(--blue)}
+.mgr-metric-val.m-green{color:var(--green)}
+.mgr-metric-val.m-red{color:var(--red)}
+.mgr-metric-val.m-orange{color:var(--orange)}
+/* Charts */
+.charts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;flex-shrink:0}
+.chart-card{background:#fff;border-radius:8px;padding:14px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.chart-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px}
+.chart-inner{max-height:190px;overflow-y:auto;flex:1}
+.mini-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.mini-tbl th{color:var(--text2);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.3px;padding:5px 7px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap;background:var(--bg2);position:sticky;top:0;z-index:1}
+.mini-tbl td{padding:5px 7px;border-bottom:1px solid var(--border);vertical-align:middle}
+.mini-tbl tr:last-child td{border-bottom:none}
+.mini-tbl tbody tr:hover td{background:var(--accent)}
+.origin-dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle;flex-shrink:0}
+.no-data-msg{padding:28px 12px;text-align:center;color:var(--text2);font-size:11px}
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--bg3);font-size:10px;font-weight:700;color:var(--text2)}
+.rank-badge.rank-1{background:#FFD700;color:#7A4F00}
+.rank-badge.rank-2{background:#C0C0C0;color:#444}
+.rank-badge.rank-3{background:#CD7F32;color:#fff}
+.agent-bar-wrap{display:flex;align-items:center;gap:5px;justify-content:flex-end}
+.agent-bar-bg{width:42px;height:4px;border-radius:2px;background:var(--bg3);overflow:hidden;flex-shrink:0}
+.agent-bar-fill{height:100%;border-radius:2px}
+/* Tab body */
+.tab-body{background:#fff;border-radius:8px;box-shadow:var(--shadow);overflow:hidden;flex:1;display:flex;flex-direction:column;min-height:0}
+/* Flat supervisor table */
+.flat-wrap{overflow-x:auto;overflow-y:scroll;flex:1}
+.flat-table{width:100%;border-collapse:collapse;font-size:12px}
+.flat-table th{background:var(--bg2);padding:9px 12px;text-align:left;font-weight:600;font-size:11px;color:var(--text2);white-space:nowrap;border-bottom:2px solid var(--border);position:sticky;top:0;z-index:1}
+.flat-table th.sortable{cursor:pointer;user-select:none}
+.flat-table th.sortable:hover{background:var(--accent);color:var(--blue)}
+.flat-table td{padding:8px 12px;border-bottom:1px solid var(--bg3);vertical-align:middle}
+.flat-table tr:hover td{background:var(--accent)}
+/* Progress bar */
+.prog-wrap{display:flex;align-items:center;gap:8px;min-width:140px}
+.prog-bar{flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;background:var(--green);border-radius:4px;transition:.3s}
+.prog-pct{font-size:12px;font-weight:600;color:var(--green);min-width:38px;text-align:right}
+/* Goal cell */
+.goal-cell{cursor:pointer;padding:3px 8px;border-radius:4px;border:1px dashed var(--border);display:inline-block;min-width:48px;text-align:center;color:var(--text2);transition:.15s}
+.goal-cell:hover{border-color:var(--blue);color:var(--blue);background:var(--accent)}
+.goal-input{width:64px;padding:3px 6px;border:1px solid var(--blue);border-radius:4px;text-align:center;outline:none}
+.goal-th{white-space:nowrap}
+.goal-all-input{margin-left:6px;width:72px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-weight:400;color:var(--text);background:var(--bg2);outline:none;vertical-align:middle}
+.goal-all-input:focus{border-color:var(--blue);background:#fff}
+/* Data table */
+.data-table-wrap{overflow:auto;flex:1}
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{background:var(--bg2);padding:8px 10px;text-align:left;font-weight:600;font-size:11px;color:var(--text2);white-space:nowrap;border-bottom:2px solid var(--border);position:sticky;top:0;z-index:1;cursor:pointer;user-select:none}
+.data-table th:hover{background:var(--accent);color:var(--blue)}
+.data-table td{padding:7px 10px;border-bottom:1px solid var(--bg3);white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.data-table tr:hover td{background:var(--accent)}
+/* Masterlist */
+.ml-controls{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.ml-search{flex:1;max-width:260px;padding:6px 10px;border:1px solid var(--border);border-radius:5px}
+.btn-primary{background:var(--blue);color:#fff;border:none;border-radius:5px;padding:6px 14px;font-weight:600;transition:.15s}
+.btn-primary:hover{background:var(--blue-dk)}
+.btn-secondary{background:#fff;color:var(--text);border:1px solid var(--border);border-radius:5px;padding:6px 14px;transition:.15s}
+.btn-secondary:hover{background:var(--bg2)}
+.ml-table-wrap{overflow-x:auto;overflow-y:scroll;flex:1}
+.ml-table{width:100%;border-collapse:collapse;font-size:12px}
+.ml-table th{background:var(--bg2);padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:2px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1}
+.ml-table td{padding:6px 10px;border-bottom:1px solid var(--bg3);vertical-align:middle}
+.ml-table tr:hover td{background:var(--accent)}
+.ml-table td input{width:100%;padding:3px 6px;border:1px solid var(--blue);border-radius:3px;font-size:12px}
+.btn-edit{background:none;border:none;color:var(--blue);cursor:pointer;padding:3px 6px;border-radius:3px;font-size:12px}
+.btn-edit:hover{background:var(--accent)}
+/* DSAT tab */
+.dsat-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.dsat-table-wrap{overflow-x:auto;overflow-y:scroll;flex:1}
+.dsat-table{width:100%;border-collapse:collapse;font-size:12px}
+.dsat-table th{background:var(--bg2);padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:2px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1}
+.dsat-table td{padding:7px 10px;border-bottom:1px solid var(--bg3);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.dsat-table tr:hover td{background:#fff0f0}
+.dsat-select{padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:#fff}
+.dsat-controls{padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
+/* Insights panel */
+.insights-panel{position:fixed;right:-360px;top:0;height:100vh;width:340px;background:#fff;border-left:1px solid var(--border);display:flex;flex-direction:column;transition:right .25s ease;z-index:100;box-shadow:-4px 0 20px rgba(0,0,0,.08)}
+.insights-panel.open{right:0}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.panel-title-txt{font-size:13px;font-weight:700}
+.btn-close-panel{background:none;border:none;font-size:16px;color:var(--text2);cursor:pointer;line-height:1;padding:2px}
+.panel-actions{display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.panel-actions .btn-hl{flex:1;text-align:center;font-size:12px;padding:6px 10px;font-weight:600}
+.panel-body{flex:1;overflow-y:scroll;padding:12px 14px;display:flex;flex-direction:column;gap:14px}
+.panel-sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:4px}
+.panel-text{font-size:12px;color:var(--text);white-space:pre-wrap;line-height:1.6}
+.btn-hl{font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:#fff;cursor:pointer}
+.btn-hl:hover{background:var(--bg3)}
+.rationale-box{font-size:12px;color:var(--text);line-height:1.7;background:var(--accent);border-left:3px solid var(--blue);padding:10px 12px;border-radius:0 5px 5px 0}
+/* Notes */
+.notes-area{width:100%;min-height:80px;padding:8px;border:1px solid var(--border);border-radius:5px;resize:vertical;font-size:12px;color:var(--text);font-family:inherit}
+/* Cluster group rows */
+.cluster-group-row td{background:var(--accent);color:var(--blue);font-weight:700;font-size:11px;padding:7px 12px;letter-spacing:.3px;border-top:2px solid var(--blue-lt);border-bottom:1px solid var(--blue-lt)}
+.cluster-group-row td span{margin-right:6px;font-size:13px}
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#222;color:#fff;padding:10px 22px;border-radius:6px;font-size:13px;z-index:9999;opacity:0;transition:.3s;pointer-events:none}
+.toast.visible{opacity:1;transform:translateX(-50%) translateY(0)}
+/* Loading */
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.8);display:none;align-items:center;justify-content:center;z-index:9998}
+.loading-spinner{width:36px;height:36px;border:3px solid var(--bg3);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Tab header row */
+.tab-header-row{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.tab-header-title{font-size:13px;font-weight:700}
+.tab-header-actions{display:flex;gap:6px;align-items:center}
+/* Badges */
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600}
+.badge-red{background:#FFEBEE;color:var(--red)}
+.badge-green{background:#E8F5E9;color:var(--green)}
+.badge-blue{background:var(--accent);color:var(--blue)}
+
+/* App header */
+.app-header{display:flex;align-items:center;gap:12px;padding:8px 16px;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0}
+.app-header-img{height:40px;width:auto;border-radius:4px;flex-shrink:0}
+.app-header-title{font-size:14px;font-weight:700;color:var(--blue);line-height:1.2}
+.app-header-sub{font-size:11px;color:var(--text2)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+<div class="loading-overlay" id="loading-overlay"><div class="loading-spinner"></div></div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <img class="login-img" src="data:image/jpeg;base64,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" alt="Customer Satisfaction Rating">
+    <div class="login-title">USD Manila Survey Dashboard</div>
+    <div class="login-sub">Customer Satisfaction · SAP USD Manila</div>
+    <button class="btn-login" id="btn-login" disabled onclick="doLogin()">Initializing...</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="app-shell" style="display:none">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-title">Manila Survey</div>
+      <div class="sidebar-logo-sub">Customer Satisfaction</div>
+    </div>
+    <div class="sidebar-nav" id="tab-bar"></div>
+    <div class="sidebar-footer">
+      <div class="sidebar-section" style="padding:0 0 4px">Actions</div>
+      <button class="btn-side" id="btn-goal" onclick="toggleGoalCol()" title="Show/hide Goal column">
+        <span>&#8982;</span> Goal
+      </button>
+      <button class="btn-side" id="btn-insights" onclick="toggleInsights()" title="Dashboard Analysis">
+        <span>&#128202;</span> Analysis
+      </button>
+      <button class="btn-side" id="btn-smartmeet" onclick="openSmartmeet()">&#128197; Smartmeet</button>
+      <button class="btn-side" onclick="navigator.clipboard.writeText(DASHBOARD_URL).then(()=>showToast('Dashboard link copied')).catch(()=>showToast('Copy failed'))" title="Copy shareable dashboard link">&#128279; Copy Link</button>
+      <div class="sidebar-section" style="padding:8px 0 4px">Auto-Refresh</div>
+      <div class="ar-row">
+        <button class="btn-side" id="btn-ar" onclick="toggleAR()" style="flex:1">
+          <span id="ar-icon">&#9646;&#9646;</span> <span id="ar-label">Pause</span>
+        </button>
+        <span class="ar-count" id="ar-count">120</span>s
+      </div>
+      <button class="btn-side" onclick="doSignOut()" style="margin-top:4px">
+        <span>&#10148;</span> Sign out
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-content">
+    <!-- APP HEADER -->
+    <div class="app-header">
+      <img class="app-header-img" src="data:image/jpeg;base64,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" alt="Customer Satisfaction">
+      <div>
+        <div class="app-header-title">USD Manila Survey Dashboard</div>
+        <div class="app-header-sub">Customer Satisfaction · SAP USD Manila</div>
+      </div>
+    </div>
+    <!-- Filter bar -->
+    <div id="filter-bar">
+      <span class="filter-label">Filter:</span>
+      <select class="filter-select" id="f-manager" onchange="applyFilters()"><option value="">All Managers</option></select>
+      <select class="filter-select" id="f-supervisor" onchange="applyFilters()"><option value="">All Supervisors</option></select>
+      <select class="filter-select" id="f-agent" onchange="applyFilters()"><option value="">All Agents</option></select>
+      <select class="filter-select" id="f-month" onchange="applyFilters()" style="display:none"><option value="">All Months</option></select>
+      <button class="btn-filter-clear" onclick="clearFilters()">Clear</button>
+    </div>
+    <!-- Scrollable body -->
+    <div class="body-scroll" id="body-scroll">
+      <div class="kpi-row" id="kpi-row">
+        <div class="kpi-card kpi-blue"><div class="kpi-label">Total Surveys</div><div class="kpi-value" id="kpi-total">—</div></div>
+        <div class="kpi-card kpi-green"><div class="kpi-label">CSAT</div><div class="kpi-value" id="kpi-csat">—</div><div class="kpi-sub" id="kpi-csat-pct"></div></div>
+        <div class="kpi-card kpi-red"><div class="kpi-label">DSAT</div><div class="kpi-value" id="kpi-dsat">—</div><div class="kpi-sub" id="kpi-dsat-pct"></div></div>
+        <div class="kpi-card kpi-orange"><div class="kpi-label">Survey %</div><div class="kpi-value" id="kpi-spct">—</div></div>
+      </div>
+      <div class="charts-grid" id="charts-grid"></div>
+      <div class="mgr-tiles-row" id="mgr-tiles-row" style="display:none"></div>
+      <div class="tab-body" id="tab-body"></div>
+    </div>
+  </div>
+
+  <!-- INSIGHTS PANEL -->
+  <div class="insights-panel" id="insights-panel">
+    <div class="panel-header">
+      <span class="panel-title-txt">Dashboard Analysis</span>
+      <button class="btn-close-panel" onclick="toggleInsights()">&#10005;</button>
+    </div>
+    <div class="panel-actions">
+      <button class="btn-hl" onclick="generateAnalysis()">&#128257; Generate</button>
+      <button class="btn-hl" onclick="copyAnalysis()">&#128203; Copy</button>
+    </div>
+    <div class="panel-body">
+      <div>
+        <div class="panel-sec-title">Performance Analysis</div>
+        <div class="panel-text" id="insights-perf">—</div>
+      </div>
+      <div>
+        <div class="panel-sec-title">Weekly Trend</div>
+        <div class="panel-text" id="insights-weekly">—</div>
+      </div>
+      <div>
+        <div class="panel-sec-title">Top Performers</div>
+        <div class="panel-text" id="insights-top">—</div>
+      </div>
+      <div>
+        <div class="panel-sec-title">DSAT Alerts</div>
+        <div class="panel-text" id="insights-dsat">—</div>
+      </div>
+      <div>
+        <div class="panel-sec-title">Notes</div>
+        <textarea class="notes-area" id="notes-area" placeholder="Add notes..."></textarea>
+      </div>
+      <div>
+        <div class="panel-sec-title" style="display:flex;align-items:center;justify-content:space-between">
+          Performance Review Script
+          <button class="btn-hl" style="font-size:10px;padding:3px 8px" onclick="copyReviewScript()">&#128203; Copy</button>
+        </div>
+        <textarea class="notes-area" id="review-script" style="min-height:220px;font-family:monospace;font-size:11px" placeholder="Click Generate to create a performance review script..."></textarea>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end app-shell -->
+
+<script>
+'use strict';
+// ─── Constants ───────────────────────────────────────────────────────────────
+const CLIENT_ID       = "9bdbf61d-ab16-4dd6-b309-7250d9a54c04";
+const TENANT_ID       = "42f7676c-f455-423c-82f6-dc2d99791af7";
+const EXCLUDED_SHEETS = ["sheet1","productivity","overall","sheet3"];
+const SITE_KEYWORDS   = ["USD Manila","Manila"];
+const FILE_NAME       = "Manila Survey Report.xlsm";
+const GRAPH_SCOPES    = ["Files.Read.All","Sites.Read.All","User.Read"];
+const WRITE_SCOPES    = ["Files.ReadWrite.All","Sites.ReadWrite.All","User.Read"];
+const RESOURCE_COLUMN = "salesforce name";
+const TAB_DISPLAY_NAMES = {"raw":"Summary","dsat":"DSAT","rawdaily":"Surveys Today"};
+const WEEKLY_START    = new Date("2026-09-01T00:00:00");
+// Raw Daily tab — column definitions (longer frag matched first to avoid prefix collisions)
+const RAW_DAILY_COLS=[
+  {label:"Case: Closed Case Survey Completed Date", frag:"surveycompleteddate"},
+  {label:"Case: Case Owner",                        frag:"caseowner"},
+  {label:"Case: Case Number",                       frag:"casenumber"},
+  {label:"Case Resolved Easily",                    frag:"caseresolvedeasily"},
+  {label:"Case Resolved Easily Comments",           frag:"caseresolvedeasilycomments"},
+  {label:"Case: Case Origin",                       frag:"caseorigin"},
+  {label:"Case: Opened Date",                       frag:"openeddate"},
+  {label:"Case: Disposition",                       frag:"disposition"}
+];
+const AR_INTERVAL     = 120;
+const DASHBOARD_URL   = "https://usdcsat.github.io/MNLCSAT/";
+const GRAPH_BASE      = "https://graph.microsoft.com/v1.0";
+const DSAT_HIDDEN     = ["support experience satisfaction","case resolved easily.","support experience satisfaction.","ce dsat","ses dsat","# of dsats percase","# of csats percase","no dsat","with dsat","case: opened date","case: disposition","case: case record type","case: account name","case: topic","case: case type","month","controllability","documented","supervisor","manager"];
+
+// ─── MSAL ────────────────────────────────────────────────────────────────────
+function loadMsalScript(){
+  const cdns=[
+    "https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.39.0/lib/msal-browser.min.js",
+    "https://unpkg.com/@azure/msal-browser@2.39.0/lib/msal-browser.min.js",
+    "https://alcdn.msauth.net/browser/2.39.0/js/msal-browser.min.js"
+  ];
+  return new Promise((resolve,reject)=>{
+    let idx=0;
+    function tryNext(){
+      if(idx>=cdns.length){reject(new Error("All MSAL CDNs failed to load"));return}
+      const s=document.createElement("script");
+      s.src=cdns[idx++];
+      s.onload=()=>{if(window.msal){resolve()}else{s.remove();tryNext()}}
+      s.onerror=()=>{s.remove();tryNext()}
+      document.head.appendChild(s);
+    }
+    tryNext();
+  });
+}
+
+const msalConfig = {
+  auth:{clientId:CLIENT_ID,authority:`https://login.microsoftonline.com/${TENANT_ID}`,redirectUri:DASHBOARD_URL},
+  cache:{cacheLocation:"sessionStorage",storeAuthStateInCookie:false}
+};
+
+const msalReady=(async()=>{
+  await loadMsalScript();
+  const inst=new msal.PublicClientApplication(msalConfig);
+  await inst.initialize();
+  return inst;
+})();
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let currentAccount=null,workbook=null,_spSiteId=null,_spFileId=null,currentSheet=null;
+let filterManager="",filterSupervisor="",filterAgent="",filterMonth="";
+let managerAgentMap={},supervisorAgentMap={},managerSupervisorMap={};
+let _arTimer=null,_arPaused=false,_arSeconds=AR_INTERVAL;
+let mlPeople=null,mlRowEditing=new Set(),_mlSheetName=null,_mlFilterText="";
+let dsatRowAnnotations=[],_dsatRowCounts=[],_dsatRawSheetName=null,_dsatHeaderRowIdx=0;
+let _dsatRowSheetIndices=[],_dsatCtrlColIdx=-1,_dsatDocColIdx=-1;
+let _supervisorGoals={},_goalColVisible=false,_lastFlatItems=[],_allAgentNames=new Set(),_rawDailyDate=null;
+let _mlAgentMap={}; // {agentName:{sv,mg}} — loaded from Masterlist
+let insightsPanelOpen=false,lastInsightCtx=null;
+let chartOrigin=null,chartAgents=null,chartWeekly=null;
+let _sortCol=-1,_sortAsc=true,_lastHeaders=[],_lastRows=[];
+
+// ─── Utilities ───────────────────────────────────────────────────────────────
+function showToast(msg,ms=3000){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("visible");setTimeout(()=>t.classList.remove("visible"),ms)}
+function showLoading(v){document.getElementById("loading-overlay").style.display=v?"flex":"none"}
+function escHtml(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function norm(s){return String(s??"").toLowerCase().replace(/[^a-z0-9]/g,"")}
+// Column finders — perCase columns (specific) take priority over generic name matches
+// to avoid hitting formula-driven CE VSAT/CE DSAT columns that store zeros.
+function _findCsatCol(headers){
+  let i=headers.findIndex(h=>{const k=norm(h);return k.includes("csat")&&k.includes("percase");});
+  if(i>=0)return i;
+  return headers.findIndex(h=>{const k=norm(h);return k==="cecsat"||k==="cevsat"||k==="csat"||k.includes("vsat");});
+}
+function _findDsatCol(headers){
+  let i=headers.findIndex(h=>{const k=norm(h);return k.includes("dsat")&&k.includes("percase");});
+  if(i>=0)return i;
+  return headers.findIndex(h=>{const k=norm(h);return k==="cedsat"||k==="dsat";});
+}
+function isManagerCol(n){const k=norm(n);return k==="manager"||k.startsWith("manager")||k.endsWith("manager")}
+function isSupervisorCol(n){const k=norm(n);return k==="supervisor"||k.startsWith("supervisor")||k.endsWith("supervisor")}
+function findAgentCol(headers){
+  const target=norm(RESOURCE_COLUMN); // "salesforcename"
+  // 1) exact normalized match on RESOURCE_COLUMN
+  let i=headers.findIndex(h=>norm(h)===target);
+  if(i>=0)return i;
+  // 2) any header containing "salesforce"
+  i=headers.findIndex(h=>norm(h).includes("salesforce"));
+  if(i>=0)return i;
+  // 2b) "Case: Case Owner" or any variant containing "caseowner"
+  i=headers.findIndex(h=>norm(h).includes("caseowner"));
+  if(i>=0)return i;
+  // 3) common explicit agent column names
+  const known=["agentname","ceagent","cename","ownername","owner",
+               "resourcename","employeename","fullname","username",
+               "assignedto","assignedtoname","staffname","csoname",
+               "repname","representativename","agentfullname","csoagent"];
+  i=headers.findIndex(h=>known.includes(norm(h)));
+  if(i>=0)return i;
+  // 4) bare word "agent" or "name"
+  i=headers.findIndex(h=>norm(h)==="agent"||norm(h)==="name");
+  if(i>=0)return i;
+  // 5) ends with "name" and is NOT a manager/supervisor column
+  i=headers.findIndex(h=>{const k=norm(h);return k.endsWith("name")&&!isManagerCol(h)&&!isSupervisorCol(h);});
+  if(i>=0)return i;
+  // 6) contains "agent" and is not manager/supervisor
+  i=headers.findIndex(h=>norm(h).includes("agent")&&!isManagerCol(h)&&!isSupervisorCol(h));
+  if(i>=0)return i;
+  // 6b) contains "owner" and is not manager/supervisor (catches "Case: Case Owner")
+  i=headers.findIndex(h=>norm(h).includes("owner")&&!isManagerCol(h)&&!isSupervisorCol(h));
+  if(i>=0)return i;
+  // 7) "name" but skip case/account metadata columns to avoid false positives
+  i=headers.findIndex(h=>{const k=norm(h);return k.includes("name")&&!isManagerCol(h)&&!isSupervisorCol(h)&&!k.includes("account")&&!k.includes("casename");});
+  if(i>=0)return i;
+  // 7b) last resort: any column containing "name"
+  i=headers.findIndex(h=>norm(h).includes("name")&&!isManagerCol(h)&&!isSupervisorCol(h));
+  if(i>=0)return i;
+  // Could not find — log headers so user can open DevTools to diagnose
+  console.warn("[Dashboard] Agent column not found. Available headers →", headers);
+  return -1;
+}
+
+// Load agent → supervisor/manager from the Masterlist sheet
+function _loadMasterlistAgents(){
+  if(!workbook)return;
+  const wsName=workbook.SheetNames.find(n=>n.toLowerCase()==="masterlist");
+  if(!wsName)return;
+  const {headers,rows}=_getSheetData(wsName);
+  // Find Salesforce Name column — exact first, then fallbacks
+  let agIdx=headers.findIndex(h=>norm(h)===norm(RESOURCE_COLUMN));
+  if(agIdx<0)agIdx=findAgentCol(headers);
+  const svIdx=headers.findIndex(h=>isSupervisorCol(h));
+  const mgIdx=headers.findIndex(h=>isManagerCol(h));
+  _mlAgentMap={};
+  rows.forEach(r=>{
+    const ag=agIdx>=0?String(r[agIdx]||"").trim():"";
+    if(!ag)return;
+    const sv=svIdx>=0?String(r[svIdx]||"").trim():"";
+    const mg=mgIdx>=0?String(r[mgIdx]||"").trim():"";
+    _mlAgentMap[ag]={sv,mg};
+  });
+  console.log("[Dashboard] Masterlist agents loaded:",Object.keys(_mlAgentMap).length);
+}
+
+// Smarter agent column finder: detects by header, then validates against
+// masterlist agent names and self-corrects via value-scan if needed
+function findAgentColForFiltering(headers,rows){
+  const headerIdx=findAgentCol(headers);
+  const mlNames=new Set(Object.keys(_mlAgentMap));
+  if(mlNames.size<2)return headerIdx; // no masterlist to validate against
+  const sample=rows.slice(0,Math.min(rows.length,100));
+  // Validate the header-detected column
+  if(headerIdx>=0){
+    let matches=0;
+    sample.forEach(r=>{if(mlNames.has(String(r[headerIdx]||"").trim()))matches++;});
+    if(matches>0)return headerIdx; // column checks out
+    console.warn("[Dashboard] Column '"+headers[headerIdx]+"' has 0 masterlist matches — running value-scan");
+  }
+  // Value-scan: find column whose cell values best match masterlist agent names
+  let bestIdx=-1,bestScore=0;
+  headers.forEach((h,ci)=>{
+    if(isManagerCol(h)||isSupervisorCol(h))return;
+    let score=0;
+    sample.forEach(r=>{if(mlNames.has(String(r[ci]||"").trim()))score++;});
+    if(score>bestScore){bestScore=score;bestIdx=ci;}
+  });
+  if(bestScore>=2){
+    console.log("[Dashboard] Agent column resolved via value-scan → '"+headers[bestIdx]+"' (idx "+bestIdx+")");
+    return bestIdx;
+  }
+  return headerIdx; // fall back to original even if imperfect
+}
+
+// ─── MSAL Auth ───────────────────────────────────────────────────────────────
+let _loginInProgress=false;
+function _clearMsalState(){
+  try{
+    Object.keys(sessionStorage).forEach(k=>{
+      if(k.includes("interaction.status")||k.includes("request.origin")||k.includes("authority.metadata")||k.endsWith(".block"))
+        sessionStorage.removeItem(k);
+    });
+  }catch(e){console.warn("[MSAL] clearState:",e.message)}
+}
+async function doLogin(){
+  if(_loginInProgress)return;
+  _loginInProgress=true;
+  const btn=document.getElementById("btn-login");
+  btn.disabled=true;
+  btn.textContent="Signing in…";
+  const instance=await msalReady;
+  try{
+    _clearMsalState();
+    // Use redirect-only flow — avoids all popup nesting issues on GitHub Pages.
+    // The tab navigates to Azure AD and returns; handleRedirectPromise() below
+    // processes the code on the way back.
+    await instance.loginRedirect({scopes:GRAPH_SCOPES});
+    // loginRedirect navigates away — nothing below this line will execute
+  }catch(e){
+    document.getElementById("login-error").textContent="Sign-in failed: "+e.message;
+    btn.disabled=false;
+    btn.textContent="Sign in with Microsoft";
+    _loginInProgress=false;
+  }
+}
+async function doSignOut(){
+  const instance=await msalReady;
+  try{await instance.logoutRedirect({account:currentAccount})}catch(e){}
+}
+async function getToken(scopes){
+  const instance=await msalReady;
+  try{const r=await instance.acquireTokenSilent({scopes,account:currentAccount});return r.accessToken}
+  catch{const r=await instance.acquireTokenPopup({scopes,account:currentAccount});return r.accessToken}
+}
+
+// ─── Graph API ───────────────────────────────────────────────────────────────
+async function gFetch(method,url,body=null,extraHdrs={},scopes=GRAPH_SCOPES){
+  const token=await getToken(scopes);
+  const hdrs={"Authorization":"Bearer "+token,...extraHdrs};
+  if(body!=null)hdrs["Content-Type"]="application/json";
+  const opts={method,headers:hdrs,cache:"no-store"};
+  if(body!=null)opts.body=JSON.stringify(body);
+  const res=await fetch(url,opts);
+  if(!res.ok){const txt=await res.text();throw new Error(`${res.status}: ${txt.slice(0,200)}`)}
+  const ct=res.headers.get("content-type")||"";
+  return ct.includes("json")?res.json():res.text();
+}
+
+// ─── App Init ─────────────────────────────────────────────────────────────────
+async function initApp(){
+  document.getElementById("login-screen").style.display="none";
+  document.getElementById("app-shell").style.display="flex";
+  showLoading(true);
+  try{
+    await _findSite();
+    await _findFile();
+    await _loadWorkbook();
+    _startAR();
+  }catch(e){showToast("Error: "+e.message,7000);console.error(e)}
+  finally{showLoading(false)}
+}
+
+async function _findSite(){
+  for(const kw of SITE_KEYWORDS){
+    try{
+      const r=await gFetch("GET",`${GRAPH_BASE}/sites?search=${encodeURIComponent(kw)}`);
+      if(r.value&&r.value.length){_spSiteId=r.value[0].id;return}
+    }catch(e){}
+  }
+  throw new Error("SharePoint site not found. Check SITE_KEYWORDS.");
+}
+
+async function _findFile(){
+  const r=await gFetch("GET",`${GRAPH_BASE}/sites/${_spSiteId}/drive/root/search(q='${encodeURIComponent(FILE_NAME)}')`);
+  const item=(r.value||[]).find(f=>f.name===FILE_NAME);
+  if(!item)throw new Error("File not found: "+FILE_NAME);
+  _spFileId=item.id;
+}
+
+async function _loadWorkbook(){
+  const token=await getToken(GRAPH_SCOPES);
+  const res=await fetch(`${GRAPH_BASE}/sites/${_spSiteId}/drive/items/${_spFileId}/content`,
+    {headers:{"Authorization":"Bearer "+token},cache:"no-store"});
+  if(!res.ok)throw new Error("Download failed: "+res.status);
+  const buf=await res.arrayBuffer();
+  workbook=XLSX.read(buf,{type:"array",cellDates:true});
+  _loadGoals();
+  _buildTabs();
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function _buildTabs(){
+  const sheets=workbook.SheetNames.filter(n=>!EXCLUDED_SHEETS.includes(n.toLowerCase()));
+  const tabs=[...sheets,"rawdaily","dsat"];
+  const bar=document.getElementById("tab-bar");
+  bar.innerHTML="";
+  tabs.forEach(sh=>{
+    const btn=document.createElement("button");
+    btn.className="tab-btn";btn.dataset.sheet=sh;
+    btn.textContent=TAB_DISPLAY_NAMES[sh.toLowerCase()]||sh;
+    btn.onclick=()=>switchTab(sh);
+    bar.appendChild(btn);
+  });
+  if(tabs.length)switchTab(tabs[0]);
+}
+
+function switchTab(sh){
+  currentSheet=sh;
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.sheet===sh));
+  const isMl=sh.toLowerCase()==="masterlist";
+  const isDsat=sh.toLowerCase()==="dsat";
+  const isRawDaily=sh.toLowerCase()==="rawdaily";
+  const isSpecial=isMl||isDsat||isRawDaily;
+  document.getElementById("filter-bar").style.display=isSpecial?"none":"flex";
+  document.getElementById("kpi-row").style.display=isSpecial?"none":"grid";
+  document.getElementById("charts-grid").style.display=isSpecial?"none":"grid";
+  document.getElementById("mgr-tiles-row").style.display=isSpecial?"none":"flex";
+  document.getElementById("btn-goal").style.display=isSpecial?"none":"flex";
+  if(isDsat){_renderDsat();return}
+  if(isMl){_renderMasterlist();return}
+  if(isRawDaily){_renderRawDaily();return}
+  _renderSheet(sh);
+}
+
+// ─── Sheet Data ───────────────────────────────────────────────────────────────
+function _getSheetData(name){
+  const ws=workbook.Sheets[name];
+  if(!ws)return{headers:[],rows:[]};
+  const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+  if(!raw.length)return{headers:[],rows:[]};
+  const headers=raw[0].map(String);
+  const rows=raw.slice(1);
+  return{headers,rows};
+}
+
+// ─── Filter Bar ───────────────────────────────────────────────────────────────
+function _buildFilterOptions(headers,rows){
+  // Load masterlist agents first — needed for smarter column detection
+  _loadMasterlistAgents();
+  const mgIdx=headers.findIndex(h=>isManagerCol(h));
+  const svIdx=headers.findIndex(h=>isSupervisorCol(h));
+  const agIdx=findAgentColForFiltering(headers,rows); // validates via masterlist
+  const mgSet=new Set(),svSet=new Set(),agSet=new Set();
+  managerAgentMap={};supervisorAgentMap={};managerSupervisorMap={};
+  rows.forEach(r=>{
+    const mg=String(r[mgIdx]||"").trim();
+    const sv=String(r[svIdx]||"").trim();
+    const ag=agIdx>=0?String(r[agIdx]||"").trim():"";
+    if(mg)mgSet.add(mg);
+    if(sv)svSet.add(sv);
+    if(ag)agSet.add(ag);
+    if(mg&&sv){if(!managerSupervisorMap[mg])managerSupervisorMap[mg]=new Set();managerSupervisorMap[mg].add(sv)}
+    if(sv&&ag){if(!supervisorAgentMap[sv])supervisorAgentMap[sv]=new Set();supervisorAgentMap[sv].add(ag)}
+    if(mg&&ag){if(!managerAgentMap[mg])managerAgentMap[mg]=new Set();managerAgentMap[mg].add(ag)}
+  });
+  _fillSelect("f-manager",["All Managers",...[...mgSet].sort()]);
+  _fillSelect("f-supervisor",["All Supervisors",...[...svSet].sort()]);
+  // Supplement with Masterlist agents (primary source of agent names)
+  Object.entries(_mlAgentMap).forEach(([ag,{sv,mg}])=>{
+    if(ag)agSet.add(ag);
+    if(sv&&ag){if(!supervisorAgentMap[sv])supervisorAgentMap[sv]=new Set();supervisorAgentMap[sv].add(ag)}
+    if(mg&&ag){if(!managerAgentMap[mg])managerAgentMap[mg]=new Set();managerAgentMap[mg].add(ag)}
+    if(mg&&sv){if(!managerSupervisorMap[mg])managerSupervisorMap[mg]=new Set();managerSupervisorMap[mg].add(sv)}
+  });
+  _allAgentNames=new Set(agSet); // persist full set so applyFilters can restore it
+  // ── Month dropdown — built from the closed-date column ──────────────────────
+  const _MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dtIdx=headers.findIndex(h=>norm(h).includes("closeddate")||norm(h).includes("closedate")||norm(h).includes("closed"));
+  const monthSet=new Set();
+  if(dtIdx>=0){
+    rows.forEach(r=>{
+      const raw=r[dtIdx];if(!raw)return;
+      const d=raw instanceof Date?raw:new Date(raw);if(isNaN(d))return;
+      monthSet.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+    });
+  }
+  const mSel=document.getElementById('f-month');
+  const mSorted=[...monthSet].sort();
+  mSel.innerHTML=`<option value="">All Months</option>`+mSorted.map(k=>{
+    const [yr,mo]=k.split('-');
+    return `<option value="${k}">${_MON[parseInt(mo)-1]} ${yr}</option>`;
+  }).join('');
+  if(filterMonth)mSel.value=filterMonth;
+  // Cascade: agent list scoped to selected supervisor → manager → all
+  _updateAgentDropdown(agSet);
+  document.getElementById("f-manager").value=filterManager||"";
+  document.getElementById("f-supervisor").value=filterSupervisor||"";
+  document.getElementById("f-agent").value=filterAgent||"";
+}
+function _updateAgentDropdown(fallbackSet){
+  let agents=null;
+  if(filterSupervisor&&supervisorAgentMap[filterSupervisor]){
+    agents=[...supervisorAgentMap[filterSupervisor]].sort();
+  } else if(filterManager&&managerAgentMap[filterManager]){
+    agents=[...managerAgentMap[filterManager]].sort();
+  } else {
+    // Use provided set, or fall back to the full cached agent list
+    const src=fallbackSet||_allAgentNames;
+    agents=src?[...src].sort():[];
+  }
+  _fillSelect("f-agent",["All Agents",...agents]);
+}
+function _fillSelect(id,options){
+  const el=document.getElementById(id);
+  const cur=el.value;
+  el.innerHTML=options.map((o,i)=>`<option value="${i===0?"":escHtml(o)}">${escHtml(o)}</option>`).join("");
+  if(options.includes(cur))el.value=cur;
+}
+function applyFilters(){
+  filterManager=document.getElementById("f-manager").value;
+  filterSupervisor=document.getElementById("f-supervisor").value;
+  filterAgent=document.getElementById("f-agent").value;
+  filterMonth=document.getElementById("f-month").value;
+  // Re-cascade agent list whenever manager or supervisor changes
+  _updateAgentDropdown(null);
+  document.getElementById("f-agent").value=filterAgent||"";
+  filterAgent=document.getElementById("f-agent").value; // may have reset if no longer valid
+  if(currentSheet&&currentSheet.toLowerCase()!=="masterlist"&&currentSheet.toLowerCase()!=="dsat")_renderSheet(currentSheet);
+}
+function clearFilters(){
+  filterManager="";filterSupervisor="";filterAgent="";filterMonth="";
+  document.getElementById("f-manager").value="";
+  document.getElementById("f-supervisor").value="";
+  document.getElementById("f-agent").value="";
+  document.getElementById("f-month").value="";
+  if(currentSheet)_renderSheet(currentSheet);
+}
+function _filterRows(headers,rows){
+  const mgIdx=headers.findIndex(h=>isManagerCol(h));
+  const svIdx=headers.findIndex(h=>isSupervisorCol(h));
+  const agIdx=findAgentColForFiltering(headers,rows);
+  const dateIdx=filterMonth?headers.findIndex(h=>norm(h).includes("closeddate")||norm(h).includes("closedate")||norm(h).includes("closed")):-1;
+  return rows.filter(r=>{
+    if(filterManager&&mgIdx>=0&&String(r[mgIdx]||"").trim()!==filterManager)return false;
+    if(filterSupervisor&&svIdx>=0&&String(r[svIdx]||"").trim()!==filterSupervisor)return false;
+    if(filterAgent&&agIdx>=0&&String(r[agIdx]||"").trim()!==filterAgent)return false;
+    if(filterMonth&&dateIdx>=0){
+      const raw=r[dateIdx];if(!raw)return false;
+      const d=raw instanceof Date?raw:new Date(raw);if(isNaN(d))return false;
+      const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      if(key!==filterMonth)return false;
+    }
+    return true;
+  });
+}
+
+// ─── KPI ─────────────────────────────────────────────────────────────────────
+function _computeKpis(headers,rows){
+  const csatIdx=_findCsatCol(headers);
+  const dsatIdx=_findDsatCol(headers);
+  let total=rows.length,csat=0,dsat=0;
+  rows.forEach(r=>{
+    if(csatIdx>=0){const v=Number(r[csatIdx]);if(!isNaN(v))csat+=v}
+    if(dsatIdx>=0){const v=Number(r[dsatIdx]);if(!isNaN(v))dsat+=v}
+  });
+  const denom=csat+dsat;
+  const csatPct=denom>0?((csat/denom)*100):0;
+  const dsatPct=denom>0?((dsat/denom)*100):0;
+  return{total,csat:Math.round(csat),dsat:Math.round(dsat),csatPct,dsatPct};
+}
+function _renderKpis(kpis){
+  document.getElementById("kpi-total").textContent=kpis.total.toLocaleString();
+  document.getElementById("kpi-csat").textContent=kpis.csat.toLocaleString();
+  document.getElementById("kpi-csat-pct").textContent=kpis.csatPct.toFixed(2)+"%";
+  document.getElementById("kpi-dsat").textContent=kpis.dsat.toLocaleString();
+  document.getElementById("kpi-dsat-pct").textContent=kpis.dsatPct.toFixed(2)+"%";
+  document.getElementById("kpi-spct").textContent=kpis.total>0?kpis.csatPct.toFixed(2)+"%":"—";
+}
+
+// ─── Charts ──────────────────────────────────────────────────────────────────
+function _weekLabel(wk){
+  const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const s=new Date(WEEKLY_START);s.setDate(s.getDate()+(wk-1)*7);
+  const e=new Date(s);e.setDate(e.getDate()+6);
+  const sm=mo[s.getMonth()],em=mo[e.getMonth()];
+  return sm===em?`${sm} ${s.getDate()}–${e.getDate()}`:`${sm} ${s.getDate()}–${em} ${e.getDate()}`;
+}
+function _destroyCharts(){
+  [chartOrigin,chartAgents,chartWeekly].forEach(c=>{if(c&&c.destroy)c.destroy()});
+  chartOrigin=chartAgents=chartWeekly=null;
+}
+function _renderCharts(headers,rows){
+  _destroyCharts();
+  const COLORS=["#0070F2","#4CB1FF","#008A35","#E67E22","#C0392B","#8E44AD","#1ABC9C"];
+  const csatIdx=_findCsatCol(headers);
+  const dsatIdx=_findDsatCol(headers);
+  const dateIdx=headers.findIndex(h=>norm(h).includes("closeddate")||norm(h).includes("closedate")||norm(h).includes("closed"));
+  const agIdx=findAgentColForFiltering(headers,rows);
+  const originIdx=headers.findIndex(h=>norm(h).includes("origin")||norm(h).includes("channel"));
+
+  // ── Panel 1: Case Origin Breakdown — week rows × origin columns ──────────────
+  let p1="";
+  if(originIdx>=0){
+    // Build week×origin map in one pass
+    const wkOrgMap={};
+    const wkSet=new Set();
+    const allOrigs=new Set();
+    const countsFallback={};
+    rows.forEach(r=>{
+      const org=String(r[originIdx]||"").trim();if(!org)return;
+      allOrigs.add(org);
+      countsFallback[org]=(countsFallback[org]||0)+1;
+      if(dateIdx>=0){
+        const raw=r[dateIdx];if(!raw)return;
+        const d=raw instanceof Date?raw:new Date(raw);if(isNaN(d))return;
+        const diff=Math.floor((d-WEEKLY_START)/(7*86400000));if(diff<0)return;
+        const wk=diff+1;wkSet.add(wk);
+        if(!wkOrgMap[wk])wkOrgMap[wk]={};
+        wkOrgMap[wk][org]=(wkOrgMap[wk][org]||0)+1;
+      }
+    });
+    const wkKeys=Array.from(wkSet).sort((a,b)=>a-b);
+    // Origins sorted by total count desc
+    const orgTotals={};
+    allOrigs.forEach(o=>{orgTotals[o]=wkKeys.reduce((s,wk)=>s+(wkOrgMap[wk]?.[o]||0),0)||countsFallback[o]||0});
+    const orgList=[...allOrigs].sort((a,b)=>(orgTotals[b]||0)-(orgTotals[a]||0));
+    const grandTotal=orgList.reduce((s,o)=>s+(orgTotals[o]||0),0)||1;
+
+    if(wkKeys.length&&orgList.length){
+      // ── Week-row layout: Weekly Trend | Phone | Chat | Portal | Total | % ──
+      p1=`<table class="mini-tbl"><thead><tr>
+        <th>Weekly Trend</th>
+        ${orgList.map((o,i)=>`<th style="text-align:right;color:${COLORS[i%COLORS.length]}">${escHtml(o)}</th>`).join("")}
+        <th style="text-align:right">Total</th>
+        <th style="text-align:right">%</th>
+      </tr></thead><tbody>${wkKeys.map(wk=>{
+        const wd=wkOrgMap[wk]||{};
+        const rowTotal=orgList.reduce((s,o)=>s+(wd[o]||0),0);
+        const pct=grandTotal>0?(rowTotal/grandTotal*100).toFixed(2):"0.00";
+        const pctCol=parseFloat(pct)>50?"var(--blue)":parseFloat(pct)>20?"var(--text)":"var(--text2)";
+        return `<tr>
+          <td style="font-weight:600;white-space:nowrap">${_weekLabel(wk)}</td>
+          ${orgList.map((o,i)=>{const cnt=wd[o]||0;return`<td style="text-align:right;color:${cnt>0?COLORS[i%COLORS.length]:"var(--text2)"}">${cnt>0?cnt:"—"}</td>`}).join("")}
+          <td style="text-align:right;font-weight:600">${rowTotal}</td>
+          <td style="text-align:right;font-weight:600;color:${pctCol}">${pct}%</td>
+        </tr>`;
+      }).join("")}
+      <tr style="border-top:2px solid var(--border);background:var(--bg2)">
+        <td style="font-weight:700">Total</td>
+        ${orgList.map((o,i)=>`<td style="text-align:right;font-weight:700;color:${COLORS[i%COLORS.length]}">${orgTotals[o]||0}</td>`).join("")}
+        <td style="text-align:right;font-weight:700">${grandTotal}</td>
+        <td style="text-align:right;font-weight:700;color:var(--blue)">100.00%</td>
+      </tr>
+      </tbody></table>`;
+    } else {
+      // Fallback when no date column: plain origin count table
+      const total=Object.values(countsFallback).reduce((a,b)=>a+b,0)||1;
+      const sorted=Object.entries(countsFallback).sort((a,b)=>b[1]-a[1]);
+      p1=`<table class="mini-tbl"><thead><tr>
+        <th>Origin</th><th style="text-align:right">Count</th><th style="text-align:right">%</th>
+      </tr></thead><tbody>${sorted.map(([k,v],i)=>{
+        const pct=(v/total*100).toFixed(2);
+        const col=COLORS[i%COLORS.length];
+        return `<tr><td><span class="origin-dot" style="background:${col}"></span>${escHtml(k)}</td>
+          <td style="text-align:right">${v}</td>
+          <td style="text-align:right;font-weight:600;color:${col}">${pct}%</td></tr>`;
+      }).join("")}</tbody></table>`;
+    }
+  } else {p1=`<div class="no-data-msg">No origin data found</div>`;}
+
+  // ── Panel 2: Top 5 Agents — CSAT Score ──────────────────────────────────────
+  let p2="";
+  if(agIdx>=0){
+    const agMap={};
+    rows.forEach(r=>{
+      const n=String(r[agIdx]||"").trim();if(!n)return;
+      if(!agMap[n])agMap[n]={c:0,d:0};
+      if(csatIdx>=0){const v=Number(r[csatIdx]);if(!isNaN(v))agMap[n].c+=v}
+      if(dsatIdx>=0){const v=Number(r[dsatIdx]);if(!isNaN(v))agMap[n].d+=v}
+    });
+    const sorted=Object.entries(agMap)
+      .map(([n,v])=>{const tot=v.c+v.d;return{n,tot,csat:v.c,pct:tot>0?(v.c/tot)*100:0}})
+      .sort((a,b)=>b.pct-a.pct||b.tot-a.tot).slice(0,5);
+    if(sorted.length){
+      p2=`<table class="mini-tbl"><thead><tr>
+        <th>#</th><th>Agent</th><th style="text-align:right">Surveys</th><th style="text-align:right">CSAT%</th>
+      </tr></thead><tbody>${sorted.map((x,i)=>{
+        const col=x.pct>=90?"var(--green)":x.pct>=70?"var(--blue)":"var(--orange)";
+        return `<tr>
+          <td><span class="rank-badge rank-${i+1}">${i+1}</span></td>
+          <td>${escHtml(x.n)}</td>
+          <td style="text-align:right">${x.tot}</td>
+          <td><div class="agent-bar-wrap">
+            <div class="agent-bar-bg"><div class="agent-bar-fill" style="width:${x.pct.toFixed(0)}%;background:${col}"></div></div>
+            <span style="font-weight:600;color:${col};min-width:38px;text-align:right">${x.pct.toFixed(2)}%</span>
+          </div></td>
+        </tr>`;
+      }).join("")}</tbody></table>`;
+    } else {p2=`<div class="no-data-msg">No agent data</div>`;}
+  } else {p2=`<div class="no-data-msg">Agent column not found</div>`;}
+
+  // ── Panel 3: Weekly Trend ────────────────────────────────────────────────────
+  let p3="";
+  if(dateIdx>=0){
+    const wkMap={};
+    rows.forEach(r=>{
+      const raw=r[dateIdx];if(!raw)return;
+      const d=raw instanceof Date?raw:new Date(raw);if(isNaN(d))return;
+      const diff=Math.floor((d-WEEKLY_START)/(7*86400000));
+      if(diff<0)return;
+      const wk=diff+1;
+      if(!wkMap[wk])wkMap[wk]={c:0,d:0,tot:0};
+      wkMap[wk].tot++;
+      if(csatIdx>=0){const cv=Number(r[csatIdx]);if(!isNaN(cv))wkMap[wk].c+=cv}
+      if(dsatIdx>=0){const dv=Number(r[dsatIdx]);if(!isNaN(dv))wkMap[wk].d+=dv}
+    });
+    const wkeys=Object.keys(wkMap).map(Number).sort((a,b)=>a-b);
+    if(wkeys.length){
+      p3=`<table class="mini-tbl"><thead><tr>
+        <th>Week</th><th style="text-align:right">Surveys</th>
+        <th style="text-align:right">CSAT</th><th style="text-align:right">DSAT</th>
+        <th style="text-align:right">CSAT%</th>
+      </tr></thead><tbody>${wkeys.map(wk=>{
+        const w=wkMap[wk];
+        const denom=w.c+w.d;
+        const pct=denom>0?((w.c/denom)*100):0;
+        const col=pct>=90?"var(--green)":pct>=70?"var(--blue)":"var(--orange)";
+        return `<tr>
+          <td style="font-weight:600;white-space:nowrap">${_weekLabel(wk)}</td>
+          <td style="text-align:right">${w.tot}</td>
+          <td style="text-align:right;color:var(--green)">${w.c}</td>
+          <td style="text-align:right;color:var(--red)">${w.d}</td>
+          <td style="text-align:right;font-weight:600;color:${col}">${pct.toFixed(2)}%</td>
+        </tr>`;
+      }).join("")}</tbody></table>`;
+    } else {p3=`<div class="no-data-msg">No date data</div>`;}
+  } else {p3=`<div class="no-data-msg">Date column not found</div>`;}
+
+  document.getElementById("charts-grid").innerHTML=`
+    <div class="chart-card"><div class="chart-title">Case Origin Breakdown</div><div class="chart-inner">${p1}</div></div>
+    <div class="chart-card"><div class="chart-title">Top 5 Agents — CSAT Score</div><div class="chart-inner">${p2}</div></div>
+    <div class="chart-card"><div class="chart-title">Weekly Trend</div><div class="chart-inner">${p3}</div></div>`;
+}
+
+// ─── Sheet Render ─────────────────────────────────────────────────────────────
+function _renderSheet(sheetName){
+  const {headers,rows}=_getSheetData(sheetName);
+  _buildFilterOptions(headers,rows);
+  let filtered=_filterRows(headers,rows);
+
+  // For raw/summary sheet: filter to non-empty Case Number, sort by closed date desc
+  const isRaw=sheetName.toLowerCase()==="raw";
+  if(isRaw){
+    const caseIdx=headers.findIndex(h=>norm(h).includes("casenumber")||norm(h).includes("case number")||norm(h)==="casenumber");
+    if(caseIdx>=0)filtered=filtered.filter(r=>String(r[caseIdx]||"").trim()!=="");
+    const dateIdx=headers.findIndex(h=>norm(h).includes("closeddate")||norm(h).includes("closed"));
+    if(dateIdx>=0)filtered.sort((a,b)=>{const da=a[dateIdx] instanceof Date?a[dateIdx]:new Date(a[dateIdx]);const db=b[dateIdx] instanceof Date?b[dateIdx]:new Date(b[dateIdx]);return db-da});
+  }
+
+  _lastHeaders=headers;_lastRows=filtered;
+  _renderKpis(_computeKpis(headers,filtered));
+  _renderCharts(headers,filtered);
+
+  // Determine if supervisor table or data table
+  const mgIdx=headers.findIndex(h=>isManagerCol(h));
+  const svIdx=headers.findIndex(h=>isSupervisorCol(h));
+  if(mgIdx>=0||svIdx>=0){
+    _renderSupervisorTable(headers,filtered);
+  } else {
+    _renderDataTable(headers,filtered,sheetName);
+  }
+  _computeInsightCtx(headers,filtered,sheetName);
+}
+
+// ─── Data Table (Summary tab) ─────────────────────────────────────────────────
+function _renderDataTable(headers,rows,sheetName){
+  const body=document.getElementById("tab-body");
+  body.innerHTML=`
+    <div class="tab-header-row">
+      <span class="tab-header-title">${escHtml(TAB_DISPLAY_NAMES[sheetName.toLowerCase()]||sheetName)} <span class="badge badge-blue">${rows.length} rows</span></span>
+      <div class="tab-header-actions">
+        <button class="btn-secondary" onclick="exportCSV()">Export CSV</button>
+      </div>
+    </div>
+    <div class="data-table-wrap"><table class="data-table" id="data-tbl">
+      <thead><tr>${headers.map((h,i)=>`<th onclick="_sortBy(${i})">${escHtml(h)}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map(r=>`<tr>${headers.map((_,i)=>`<td title="${escHtml(r[i])}">${escHtml(r[i])}</td>`).join("")}</tr>`).join("")}</tbody>
+    </table></div>`;
+}
+
+// ─── Supervisor Flat Table ────────────────────────────────────────────────────
+function _renderSupervisorTable(headers,rows){
+  const svIdx=headers.findIndex(h=>isSupervisorCol(h));
+  const mgIdx=headers.findIndex(h=>isManagerCol(h));
+  const csatIdx=_findCsatCol(headers);
+  const dsatIdx=_findDsatCol(headers);
+  const agIdx=findAgentColForFiltering(headers,rows);
+  if(filterSupervisor){
+    if(agIdx<0){
+      // Agent column not found — render each row individually
+      console.warn("[Dashboard] Drill-down: agent column not found. Showing row-level data.");
+      const rowItems=rows.map(r=>{
+        const mg=mgIdx>=0?String(r[mgIdx]||"").trim():"";
+        let csat=0,dsat=0;
+        if(csatIdx>=0){const v=Number(r[csatIdx]);if(!isNaN(v))csat=v}
+        if(dsatIdx>=0){const v=Number(r[dsatIdx]);if(!isNaN(v))dsat=v}
+        return {name:"Row "+(rows.indexOf(r)+1),cluster:mg,csat,dsat,total:1};
+      });
+      _renderFlatTable(rowItems,true);
+      return;
+    }
+    const agMap={};
+    rows.forEach(r=>{
+      const ag=String(r[agIdx]||"").trim();if(!ag)return;
+      if(!agMap[ag])agMap[ag]={csat:0,dsat:0,total:0,mg:mgIdx>=0?String(r[mgIdx]||"").trim():""};
+      agMap[ag].total++;
+      if(csatIdx>=0){const v=Number(r[csatIdx]);if(!isNaN(v))agMap[ag].csat+=v}
+      if(dsatIdx>=0){const v=Number(r[dsatIdx]);if(!isNaN(v))agMap[ag].dsat+=v}
+    });
+    _renderFlatTable(Object.entries(agMap).map(([name,v])=>({name,cluster:v.mg,csat:v.csat,dsat:v.dsat,total:v.total})),true);
+    return;
+  }
+
+  // Supervisor-level aggregation
+  // svMgCounts tracks all manager values seen per supervisor so we can
+  // assign the most-frequent one (guards against sparse/wrong first rows).
+  const svMap={};
+  const svMgCounts={};
+  rows.forEach(r=>{
+    // 1. Read supervisor directly from survey row
+    let sv=svIdx>=0?String(r[svIdx]||"").trim():"";
+    // 2. If blank, resolve via Masterlist using the agent name on the same row
+    if(!sv&&agIdx>=0){
+      const ag=String(r[agIdx]||"").trim();
+      if(ag&&_mlAgentMap[ag])sv=_mlAgentMap[ag].sv||"";
+    }
+    // 3. Final fallback
+    if(!sv)sv="(Unknown)";
+    // 4. Similarly resolve manager if blank
+    let mg=mgIdx>=0?String(r[mgIdx]||"").trim():"";
+    if(!mg&&agIdx>=0){
+      const ag=String(r[agIdx]||"").trim();
+      if(ag&&_mlAgentMap[ag])mg=_mlAgentMap[ag].mg||"";
+    }
+    if(!svMap[sv])svMap[sv]={csat:0,dsat:0,total:0,mg:""};
+    if(!svMgCounts[sv])svMgCounts[sv]={};
+    if(mg)svMgCounts[sv][mg]=(svMgCounts[sv][mg]||0)+1;
+    svMap[sv].total++;
+    if(csatIdx>=0){const v=Number(r[csatIdx]);if(!isNaN(v))svMap[sv].csat+=v}
+    if(dsatIdx>=0){const v=Number(r[dsatIdx]);if(!isNaN(v))svMap[sv].dsat+=v}
+  });
+  // Build supervisor→manager lookup from Masterlist (authoritative; covers supervisors
+  // whose survey rows have blank/inconsistent manager columns).
+  const svToMgFromML={};
+  Object.values(_mlAgentMap).forEach(({sv,mg})=>{if(sv&&mg)svToMgFromML[sv]=mg;});
+  // Assign manager: most-frequent from survey rows first, then Masterlist fallback
+  Object.keys(svMap).forEach(sv=>{
+    const counts=svMgCounts[sv]||{};
+    const best=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+    svMap[sv].mg=best?.[0]||svToMgFromML[sv]||"";
+  });
+  _renderFlatTable(Object.entries(svMap).map(([name,v])=>({name,cluster:v.mg,csat:v.csat,dsat:v.dsat,total:v.total})),false);
+}
+
+function _renderFlatTable(items,isAgent){
+  _lastFlatItems=items;
+  const body=document.getElementById("tab-body");
+  const goalVis=_goalColVisible;
+  const colCount=isAgent?6+(goalVis?1:0):6+(goalVis?1:0);
+
+  // ── Manager summary tiles (supervisor mode only) ──────────────────────────
+  const tilesEl=document.getElementById("mgr-tiles-row");
+  if(tilesEl){
+    if(!isAgent){
+      const mgMap={};
+      items.forEach(({cluster,csat,dsat,total})=>{
+        const mg=cluster||"(No Cluster)";
+        if(!mgMap[mg])mgMap[mg]={csat:0,dsat:0,total:0};
+        mgMap[mg].csat+=csat;mgMap[mg].dsat+=dsat;mgMap[mg].total+=total;
+      });
+      tilesEl.innerHTML=Object.entries(mgMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([mg,v])=>{
+        const denom=v.csat+v.dsat;
+        const pct=denom>0?(v.csat/denom*100):0;
+        const pctCls=pct<88?"m-red":pct<(parseFloat(_supervisorGoals[mg])||95)?"m-orange":"m-green";
+        return `<div class="mgr-tile">
+          <div class="mgr-tile-name">${escHtml(mg)}</div>
+          <div class="mgr-tile-metrics">
+            <div class="mgr-metric"><div class="mgr-metric-label">Total Surveys</div><div class="mgr-metric-val m-blue">${v.total}</div></div>
+            <div class="mgr-metric"><div class="mgr-metric-label">CSAT</div><div class="mgr-metric-val m-green">${v.csat}</div></div>
+            <div class="mgr-metric"><div class="mgr-metric-label">DSAT</div><div class="mgr-metric-val m-red">${v.dsat}</div></div>
+            <div class="mgr-metric"><div class="mgr-metric-label">Survey %</div><div class="mgr-metric-val ${pctCls}">${pct.toFixed(2)}%</div></div>
+          </div>
+        </div>`;
+      }).join("");
+      tilesEl.style.display="flex";
+    } else {
+      tilesEl.style.display="none";
+    }
+  }
+  // For supervisor mode: sort by cluster then by name within cluster
+  let sorted;
+  if(!isAgent){
+    sorted=[...items].sort((a,b)=>{
+      const ca=(a.cluster||"").toLowerCase(),cb=(b.cluster||"").toLowerCase();
+      if(ca<cb)return -1;if(ca>cb)return 1;
+      return(a.name||"").toLowerCase()<(b.name||"").toLowerCase()?-1:1;
+    });
+  } else {
+    // Agent drill-down: sort by CE VSAT desc, then CSAT % desc as tiebreaker
+    sorted=[...items].sort((a,b)=>{
+      if(b.csat!==a.csat)return b.csat-a.csat;
+      const ap=a.csat+a.dsat>0?a.csat/(a.csat+a.dsat):0;
+      const bp=b.csat+b.dsat>0?b.csat/(b.csat+b.dsat):0;
+      return bp-ap;
+    });
+  }
+
+  let rows="";
+  if(!isAgent){
+    // ── Supervisor mode: group rows by manager with a separator header ──────
+    const mgGrps={};const mgOrd=[];
+    sorted.forEach(it=>{
+      const cl=it.cluster||"(No Cluster)";
+      if(!mgGrps[cl]){mgGrps[cl]=[];mgOrd.push(cl);}
+      mgGrps[cl].push(it);
+    });
+    const totalCols=5+(goalVis?1:0);
+    for(const cl of mgOrd){
+      const grp=mgGrps[cl];
+      const gc=grp.reduce((s,x)=>s+x.csat,0);
+      const gd=grp.reduce((s,x)=>s+x.dsat,0);
+      const gt=grp.reduce((s,x)=>s+x.total,0);
+      const gden=gc+gd;
+      const gpct=gden>0?(gc/gden*100):0;
+      const gpcol=gpct<88?"var(--red)":gpct>=95?"var(--green)":"#FFBF00";
+      rows+=`<tr class="cluster-group-row"><td colspan="${totalCols}">
+        <span style="margin-right:5px">&#128101;</span><strong>${escHtml(cl)}</strong>
+        <span style="font-weight:400;font-size:10px;margin-left:8px;opacity:.7">${grp.length} supervisor${grp.length!==1?"s":""}</span>
+        <span style="margin-left:14px;color:var(--green);font-size:10px;font-weight:600">CSAT ${gc}</span>
+        <span style="margin-left:6px;color:var(--red);font-size:10px;font-weight:600">DSAT ${gd}</span>
+        <span style="margin-left:6px;color:var(--text2);font-size:10px">Total ${gt}</span>
+        <span style="margin-left:10px;font-weight:700;font-size:11px;color:${gpcol}">${gpct.toFixed(2)}%</span>
+      </td></tr>`;
+      for(const it of grp){
+        const denom=it.csat+it.dsat;
+        const pct=denom>0?((it.csat/denom)*100):0;
+        const goalKey=it.name;
+        const goalVal=_supervisorGoals[goalKey]||"—";
+        const goalNum=parseFloat(goalVal);
+        let fillColor="var(--green)",scoreColor="var(--green)";
+        if(pct<88){fillColor="var(--red)";scoreColor="var(--red)";}
+        else if(!isNaN(goalNum)&&pct<goalNum){fillColor="#FFBF00";scoreColor="#FFBF00";}
+        rows+=`<tr>
+          <td style="padding-left:20px">${escHtml(it.name)}</td>
+          <td>${it.csat}</td>
+          <td>${it.dsat}</td>
+          <td>${it.total}</td>
+          <td><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:${pct.toFixed(2)}%;background:${fillColor}"></div></div><span class="prog-pct" style="color:${scoreColor}">${pct.toFixed(2)}%</span></div></td>
+          ${goalVis?`<td><span class="goal-cell" onclick="editGoal(this,'${escHtml(goalKey)}')">${escHtml(String(goalVal))}</span></td>`:""}
+        </tr>`;
+      }
+    }
+  } else {
+    // ── Agent drill-down: flat list sorted by CSAT desc ──────────────────────
+    for(const it of sorted){
+      const denom=it.csat+it.dsat;
+      const pct=denom>0?((it.csat/denom)*100):0;
+      const goalKey=it.name;
+      const goalVal=_supervisorGoals[goalKey]||"—";
+      const goalNum=parseFloat(goalVal);
+      let fillColor="var(--green)",scoreColor="var(--green)";
+      if(!isAgent||filterSupervisor){
+        if(pct<88){fillColor="var(--red)";scoreColor="var(--red)";}
+        else if(!isNaN(goalNum)&&pct<goalNum){fillColor="#FFBF00";scoreColor="#FFBF00";}
+      }
+      rows+=`<tr>
+        <td>${escHtml(it.name)}</td>
+        ${isAgent?`<td>${escHtml(it.cluster||"")}</td>`:""}
+        <td>${it.csat}</td>
+        <td>${it.dsat}</td>
+        <td>${it.total}</td>
+        <td><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:${pct.toFixed(2)}%;background:${fillColor}"></div></div><span class="prog-pct" style="color:${scoreColor}">${pct.toFixed(2)}%</span></div></td>
+        ${goalVis?`<td><span class="goal-cell" onclick="editGoal(this,'${escHtml(goalKey)}')">${escHtml(String(goalVal))}</span></td>`:""}
+      </tr>`;
+    }
+  }
+
+  body.innerHTML=`
+    <div class="tab-header-row">
+      <span class="tab-header-title">${isAgent?"Agent Drill-down":"Manager / Supervisor Summary"} <span class="badge badge-blue">${items.length} rows</span></span>
+      ${goalVis?`<div class="tab-header-actions"><button class="btn-secondary" onclick="_saveGoals()" title="Save goals to browser storage">&#128190; Save Goals</button></div>`:""}
+    </div>
+    <div class="flat-wrap"><table class="flat-table">
+      <thead><tr>
+        <th>${isAgent?"Agent":"Supervisor"}</th>
+        ${isAgent?`<th>Cluster (Manager)</th>`:""}
+        <th>CE VSAT</th>
+        <th>CE DSAT</th>
+        <th>Total Surveys</th>
+        <th>CSAT Score</th>
+        ${goalVis?`<th class="goal-th">Goal<input class="goal-all-input" type="number" min="0" max="100" placeholder="Set all…" title="Type a value and press Enter to set goal for all rows" onkeydown="if(event.key==='Enter'){setGoalForAll(this.value);this.value='';event.preventDefault()}"></th>`:""}
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+// ─── Goal Column ─────────────────────────────────────────────────────────────
+function toggleGoalCol(){
+  _goalColVisible=!_goalColVisible;
+  document.getElementById("btn-goal").classList.toggle("active",_goalColVisible);
+  if(currentSheet)_renderSheet(currentSheet);
+}
+function editGoal(span,key){
+  const cur=_supervisorGoals[key]||"";
+  const inp=document.createElement("input");
+  inp.type="number";inp.className="goal-input";inp.value=cur;
+  span.replaceWith(inp);
+  inp.focus();inp.select();
+  function save(){
+    const val=inp.value.trim();
+    if(val!=="")_supervisorGoals[key]=val;
+    inp.replaceWith(span);
+    span.textContent=_supervisorGoals[key]||"—";
+  }
+  inp.addEventListener("blur",save);
+  inp.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){e.preventDefault();inp.blur()}
+    if(e.key==="Escape"){inp.replaceWith(span)}
+  });
+}
+function setGoalForAll(val){
+  const v=String(val||"").trim();
+  if(!v)return;
+  _lastFlatItems.forEach(it=>{_supervisorGoals[it.name]=v});
+  showToast(`Goal set to ${v} for all ${_lastFlatItems.length} rows`);
+  if(currentSheet)_renderSheet(currentSheet);
+}
+function _saveGoals(){
+  // 1. Flush any open inline cell editor so its value is committed first
+  const openCellInput=document.querySelector(".goal-input");
+  if(openCellInput)openCellInput.blur();
+  // 2. Flush the "Set all…" header input — users often type a value and click
+  //    Save without pressing Enter, so we commit it here automatically.
+  const allInput=document.querySelector(".goal-all-input");
+  if(allInput&&allInput.value.trim()!==""){
+    const v=String(allInput.value.trim());
+    _lastFlatItems.forEach(it=>{_supervisorGoals[it.name]=v});
+    allInput.value="";
+  }
+  try{
+    localStorage.setItem("manila-dashboard-goals",JSON.stringify(_supervisorGoals));
+    showToast("Goals saved");
+    // Re-render so cells immediately reflect the saved values
+    if(currentSheet)_renderSheet(currentSheet);
+  }catch(e){showToast("Save failed: "+e.message,5000)}
+}
+function _loadGoals(){
+  try{
+    const raw=localStorage.getItem("manila-dashboard-goals");
+    if(raw){_supervisorGoals=JSON.parse(raw);console.log("[Dashboard] Goals restored:",Object.keys(_supervisorGoals).length,"entries")}
+  }catch(e){console.warn("[Dashboard] Could not restore goals:",e.message)}
+}
+
+// ─── Sort ─────────────────────────────────────────────────────────────────────
+function _sortBy(col){
+  if(_sortCol===col)_sortAsc=!_sortAsc;else{_sortCol=col;_sortAsc=true}
+  const rows=[..._lastRows];
+  rows.sort((a,b)=>{
+    const av=a[col]??"",bv=b[col]??"";
+    if(av instanceof Date&&bv instanceof Date)return _sortAsc?av-bv:bv-av;
+    const an=parseFloat(av),bn=parseFloat(bv);
+    if(!isNaN(an)&&!isNaN(bn))return _sortAsc?an-bn:bn-an;
+    return _sortAsc?String(av).localeCompare(String(bv)):String(bv).localeCompare(String(av));
+  });
+  _lastRows=rows;
+  _renderDataTable(_lastHeaders,rows,currentSheet);
+}
+
+// ─── Export CSV ───────────────────────────────────────────────────────────────
+function exportCSV(){
+  if(!_lastHeaders.length)return;
+  const esc=v=>{const s=String(v??"");return s.includes(",")||s.includes('"')||s.includes("\n")?`"${s.replace(/"/g,'""')}"`:s};
+  const csv=[_lastHeaders.map(esc).join(","),..._lastRows.map(r=>_lastHeaders.map((_,i)=>esc(r[i])).join(","))].join("\n");
+  const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="export.csv";a.click();
+}
+
+// ─── Raw Daily Tab ────────────────────────────────────────────────────────────
+function _setRawDailyDate(val){_rawDailyDate=val;_renderRawDaily();}
+
+function _renderRawDaily(){
+  const body=document.getElementById("tab-body");
+  const rawSheet=workbook.SheetNames.find(n=>n.toLowerCase()==="raw");
+  if(!rawSheet){body.innerHTML=`<div style="padding:24px;color:var(--text2)">No Raw sheet found.</div>`;return;}
+  const{headers,rows}=_getSheetData(rawSheet);
+  if(!rows.length){body.innerHTML=`<div style="padding:24px;color:var(--text2)">Raw sheet is empty.</div>`;return;}
+
+  // Map each desired column to its actual header index
+  const sortedDefs=[...RAW_DAILY_COLS].sort((a,b)=>b.frag.length-a.frag.length);
+  const usedIdx=new Set();
+  const colMap=sortedDefs.map(def=>{
+    const idx=headers.findIndex((h,i)=>!usedIdx.has(i)&&norm(h).includes(def.frag));
+    if(idx>=0)usedIdx.add(idx);
+    return{...def,idx};
+  });
+  const orderedCols=RAW_DAILY_COLS.map(def=>colMap.find(c=>c.frag===def.frag));
+
+  const dateDef=orderedCols.find(c=>c.frag==="surveycompleteddate");
+  const dateIdx=dateDef?dateDef.idx:-1;
+  const dispDef=orderedCols.find(c=>c.frag==="disposition");
+  const dispIdx=dispDef?dispDef.idx:-1;
+
+  // ── Collect all unique dates available in the data ──────────────────────────
+  const dateSet=new Set();
+  if(dateIdx>=0){
+    rows.forEach(r=>{
+      const raw=r[dateIdx];
+      const d=raw instanceof Date?raw:new Date(raw);
+      if(!isNaN(d)){
+        dateSet.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+      }
+    });
+  }
+  const allDateKeys=[...dateSet].sort().reverse(); // newest first
+  const latestKey=allDateKeys[0]||null;
+
+  // Determine active date — validate stored selection; fall back to latest
+  let activeKey=_rawDailyDate;
+  if(!activeKey||!allDateKeys.includes(activeKey))activeKey=latestKey;
+
+  // Build day window from active key
+  let refDate;
+  if(activeKey){
+    const[yr,mo,dy]=activeKey.split('-').map(Number);
+    refDate=new Date(yr,mo-1,dy);
+  }else{refDate=new Date();}
+  const dayStart=new Date(refDate);dayStart.setHours(0,0,0,0);
+  const dayEnd=new Date(dayStart);dayEnd.setDate(dayEnd.getDate()+1);
+  const dateLabel=dayStart.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+
+  // ── Date dropdown ───────────────────────────────────────────────────────────
+  const dateSel=allDateKeys.length>0?`
+    <select class="filter-select" style="font-size:11px;padding:3px 8px;min-width:160px"
+            onchange="_setRawDailyDate(this.value)">
+      ${allDateKeys.map(k=>{
+        const[yr,mo,dy]=k.split('-').map(Number);
+        const lbl=new Date(yr,mo-1,dy).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+        return`<option value="${k}"${k===activeKey?' selected':''}>${lbl}${k===latestKey?' (latest)':''}</option>`;
+      }).join('')}
+    </select>`:'';
+
+  // ── Filter to active date ───────────────────────────────────────────────────
+  let filtered=rows.filter(r=>{
+    if(dateIdx<0)return true;
+    const raw=r[dateIdx];
+    const d=raw instanceof Date?raw:new Date(raw);
+    return !isNaN(d)&&d>=dayStart&&d<dayEnd;
+  });
+
+  filtered.sort((a,b)=>{
+    if(dateIdx<0)return 0;
+    const da=a[dateIdx] instanceof Date?a[dateIdx]:new Date(a[dateIdx]);
+    const db=b[dateIdx] instanceof Date?b[dateIdx]:new Date(b[dateIdx]);
+    return db-da;
+  });
+
+  const visCols=orderedCols.filter(c=>c.idx>=0);
+
+  const headerRow=`
+    <div class="tab-header-row">
+      <span class="tab-header-title">Surveys Today <span class="badge badge-blue">${filtered.length} row${filtered.length!==1?"s":""}</span></span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:var(--text2)">Date:</span>
+        ${dateSel}
+        <button class="btn-secondary" style="font-size:11px;padding:3px 10px" onclick="_setRawDailyDate('${latestKey||''}')">Latest</button>
+      </div>
+    </div>`;
+
+  if(!filtered.length){
+    body.innerHTML=headerRow+`<div style="padding:24px;text-align:center;color:var(--text2);font-size:12px">No cases found for ${dateLabel}.</div>`;
+    return;
+  }
+
+  const tbodyRows=filtered.map(r=>`<tr>${visCols.map(c=>{
+    const val=String(r[c.idx]??"")||"";
+    const isDisp=c.frag==="disposition";
+    const style=isDisp&&val.trim()!=="Assisted by USD"?` style="color:var(--red);font-weight:600"`:"";
+    return`<td title="${escHtml(val)}"${style}>${escHtml(val)}</td>`;
+  }).join("")}</tr>`).join("");
+
+  body.innerHTML=headerRow+`
+    <div class="flat-wrap"><table class="flat-table">
+      <thead><tr>${visCols.map(c=>`<th>${escHtml(c.label)}</th>`).join("")}</tr></thead>
+      <tbody>${tbodyRows}</tbody>
+    </table></div>`;
+}
+
+// ─── Masterlist ───────────────────────────────────────────────────────────────
+function _renderMasterlist(){
+  const ws=workbook.SheetNames.find(n=>n.toLowerCase()==="masterlist");
+  if(!ws){document.getElementById("tab-body").innerHTML=`<div style="padding:24px;color:var(--text2)">No Masterlist sheet found.</div>`;return}
+  _mlSheetName=ws;
+  const {headers,rows}=_getSheetData(ws);
+  mlPeople=rows.map(r=>[...r]);
+  _renderMlTable(headers,mlPeople);
+}
+
+function _renderMlTable(headers,rows){
+  const body=document.getElementById("tab-body");
+  const filtered=_mlFilterText?rows.filter(r=>r.some(c=>String(c||"").toLowerCase().includes(_mlFilterText))):rows;
+  // Columns to hide in Masterlist view (normalized)
+  const ML_HIDDEN=new Set(["fullname"]);
+  const mlVisCols=headers.map((h,ci)=>({h,ci})).filter(({h})=>!ML_HIDDEN.has(norm(h)));
+  // Only rebuild the controls bar on first render; preserve the search input
+  // so it keeps focus while the user is typing.
+  if(!document.getElementById("ml-tbl-wrap")){
+    body.innerHTML=`
+      <div class="ml-controls">
+        <input id="ml-search-inp" class="ml-search" placeholder="Search..."
+          oninput="_mlSearch(this.value)" value="${escHtml(_mlFilterText)}">
+        <button class="btn-primary" onclick="_mlAddRow()">+ Add Row</button>
+        <button class="btn-primary" onclick="_mlSaveToSP()">Save to SharePoint</button>
+      </div>
+      <div id="ml-tbl-wrap" class="ml-table-wrap"></div>`;
+  } else {
+    // Sync value in case filter was cleared programmatically
+    const inp=document.getElementById("ml-search-inp");
+    if(inp&&inp.value.toLowerCase()!==_mlFilterText)inp.value=_mlFilterText;
+  }
+  document.getElementById("ml-tbl-wrap").innerHTML=`<table class="ml-table" id="ml-tbl">
+      <thead><tr><th>Edit</th>${mlVisCols.map(({h})=>`<th>${escHtml(h)}</th>`).join("")}</tr></thead>
+      <tbody>${filtered.map((r,ri)=>{
+        const isEdit=mlRowEditing.has(ri);
+        return `<tr data-ri="${ri}">
+          <td><button class="btn-edit" onclick="_mlToggleEdit(${ri})">${isEdit?"Save":"✏"}</button></td>
+          ${mlVisCols.map(({ci})=>isEdit
+            ?`<td><input value="${escHtml(r[ci])}" onchange="mlPeople[${ri}][${ci}]=this.value" style="width:100%;padding:2px 4px;border:1px solid var(--border);border-radius:3px;font-size:12px"></td>`
+            :`<td title="${escHtml(r[ci])}">${escHtml(r[ci])}</td>`).join("")}
+        </tr>`;
+      }).join("")}</tbody>
+    </table>`;
+}
+function _mlSearch(val){
+  _mlFilterText=val.toLowerCase();
+  const{headers}=_getSheetData(_mlSheetName);
+  _renderMlTable(headers,mlPeople);
+}
+
+function _mlToggleEdit(ri){
+  if(mlRowEditing.has(ri))mlRowEditing.delete(ri);else mlRowEditing.add(ri);
+  _renderMasterlist();
+}
+function _mlAddRow(){
+  if(!mlPeople)return;
+  const {headers}=_getSheetData(_mlSheetName);
+  mlPeople.push(new Array(headers.length).fill(""));
+  const newIdx=mlPeople.length-1;
+  mlRowEditing.add(newIdx);
+  _renderMasterlist();
+}
+async function _mlSaveToSP(){
+  if(!_mlSheetName||!mlPeople)return;
+  showLoading(true);
+  try{
+    const {headers}=_getSheetData(_mlSheetName);
+    const allRows=[headers,...mlPeople];
+    const numRows=allRows.length,numCols=headers.length;
+    const addr=`${_mlSheetName}!A1:${String.fromCharCode(64+numCols)}${numRows}`;
+    // Create session
+    const sess=await gFetch("POST",`${GRAPH_BASE}/sites/${_spSiteId}/drive/items/${_spFileId}/workbook/createSession`,{persistChanges:true},{},WRITE_SCOPES);
+    const sessHdr={"workbook-session-id":sess.id};
+    // Clear then write
+    await gFetch("POST",`${GRAPH_BASE}/sites/${_spSiteId}/drive/items/${_spFileId}/workbook/worksheets/${encodeURIComponent(_mlSheetName)}/range(address='${addr}')/clear`,{applyTo:"contents"},sessHdr,WRITE_SCOPES);
+    await gFetch("PATCH",`${GRAPH_BASE}/sites/${_spSiteId}/drive/items/${_spFileId}/workbook/worksheets/${encodeURIComponent(_mlSheetName)}/range(address='${addr}')`,{values:allRows},sessHdr,WRITE_SCOPES);
+    await gFetch("POST",`${GRAPH_BASE}/sites/${_spSiteId}/drive/items/${_spFileId}/workbook/closeSession`,{},{...sessHdr},WRITE_SCOPES);
+    showToast("Masterlist saved to SharePoint");
+    mlRowEditing.clear();
+    _mlAgentMap={}; // invalidate cache so next filter build reloads
+  }catch(e){showToast("Save failed: "+e.message,6000)}
+  finally{showLoading(false)}
+}
+
+// ─── DSAT Tab ───────────────────────────────────────────────────────────────────────────────────
+function _renderDsat(){
+  // Find the Raw sheet
+  const rawSheet=workbook.SheetNames.find(n=>n.toLowerCase()==="raw");
+  if(!rawSheet){document.getElementById("tab-body").innerHTML=`<div style="padding:24px;color:var(--text2)">No Raw sheet found for DSAT analysis.</div>`;return}
+  _dsatRawSheetName=rawSheet;
+  const ws=workbook.Sheets[rawSheet];
+  const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+  if(!raw.length){document.getElementById("tab-body").innerHTML=`<div style="padding:24px;color:var(--text2)">Raw sheet is empty.</div>`;return}
+
+  // Find header row (first row with data)
+  let hdrIdx=0;
+  for(let i=0;i<Math.min(5,raw.length);i++){if(raw[i].some(c=>String(c).trim()!="")){hdrIdx=i;break}}
+  _dsatHeaderRowIdx=hdrIdx;
+  const headers=raw[hdrIdx].map(String);
+  const allRows=raw.slice(hdrIdx+1);
+
+  // Find DSAT column
+  const dsatPerCaseIdx=headers.findIndex(h=>norm(h).includes("dsatspercase")||norm(h).includes("dsat percase")||norm(h).includes("dsatpercase"));
+  _dsatCtrlColIdx=headers.findIndex(h=>norm(h)==="controllability"||norm(h).includes("controllability"));
+  _dsatDocColIdx=headers.findIndex(h=>norm(h)==="documented"||norm(h).includes("documented"));
+
+  // Filter rows where # of DSATs perCase > 0
+  let dsatRows=allRows;
+  if(dsatPerCaseIdx>=0){
+    dsatRows=allRows.filter(r=>{const v=Number(r[dsatPerCaseIdx]);return!isNaN(v)&&v>0});
+  }
+
+  // Store row indices back to sheet for save
+  _dsatRowSheetIndices=[];
+  if(dsatPerCaseIdx>=0){
+    allRows.forEach((r,i)=>{const v=Number(r[dsatPerCaseIdx]);if(!isNaN(v)&&v>0)_dsatRowSheetIndices.push(i+hdrIdx+1)});
+  }
+
+  // Annotations: pre-populate from existing data
+  dsatRowAnnotations=dsatRows.map((r,i)=>({
+    ctrl:_dsatCtrlColIdx>=0?String(r[_dsatCtrlColIdx]||""):"",
+    doc:_dsatDocColIdx>=0?String(r[_dsatDocColIdx]||""):"",
+    sheetRow:_dsatRowSheetIndices[i]??0
+  }));
+  _dsatRowCounts=dsatRows;
+
+  // Determine visible columns — normalize both sides so spaces/symbols never cause mismatches
+  const _dsatHiddenSet=new Set(DSAT_HIDDEN.map(s=>norm(s)));
+  const visibleCols=headers.map((h,i)=>({h,i})).filter(({h})=>!_dsatHiddenSet.has(norm(h)));
+
+  // Render
+  const body=document.getElementById("tab-body");
+  body.innerHTML=`
+    <div class="dsat-kpi-row" id="dsat-kpi-row">
+      <div class="kpi-card kpi-red"><div class="kpi-label">Total DSATs</div><div class="kpi-value" id="dsat-kpi-total">0</div></div>
+      <div class="kpi-card kpi-orange"><div class="kpi-label">Controllable</div><div class="kpi-value" id="dsat-kpi-ctrl">0</div></div>
+      <div class="kpi-card" style="--c:var(--blue)"><div class="kpi-label">Uncontrollable</div><div class="kpi-value kpi-blue" id="dsat-kpi-unctrl">0</div></div>
+      <div class="kpi-card"><div class="kpi-label">Not Documented</div><div class="kpi-value" style="color:var(--text2)" id="dsat-kpi-nodoc">0</div></div>
+    </div>
+    <div class="dsat-controls">
+      <span style="font-size:12px;color:var(--text2)">${dsatRows.length} DSAT rows</span>
+      <button class="btn-primary" onclick="_dsatSaveToSP()" style="margin-left:auto">Save to SharePoint</button>
+    </div>
+    <div class="dsat-table-wrap"><table class="dsat-table">
+      <thead><tr>
+        <th>#</th>
+        ${visibleCols.map(({h})=>`<th>${escHtml(h)}</th>`).join("")}
+        <th>Controllability</th>
+        <th>Documented</th>
+      </tr></thead>
+      <tbody>${dsatRows.map((r,ri)=>`<tr>
+        <td>${ri+1}</td>
+        ${visibleCols.map(({i})=>`<td title="${escHtml(r[i])}">${escHtml(r[i])}</td>`).join("")}
+        <td><select class="dsat-select" data-ri="${ri}" data-type="ctrl" onchange="_dsatUpdateAnnotation(this)">
+          <option value="">-- Select --</option>
+          <option value="Controllable"${dsatRowAnnotations[ri].ctrl==="Controllable"?" selected":""}>Controllable</option>
+          <option value="Uncontrollable"${dsatRowAnnotations[ri].ctrl==="Uncontrollable"?" selected":""}>Uncontrollable</option>
+        </select></td>
+        <td><select class="dsat-select" data-ri="${ri}" data-type="doc" onchange="_dsatUpdateAnnotation(this)">
+          <option value="No"${dsatRowAnnotations[ri].doc==="No"?" selected":""}>No</option>
+          <option value="Yes"${dsatRowAnnotations[ri].doc==="Yes"?" selected":""}>Yes</option>
+        </select></td>
+      </tr>`).join("")}</tbody>
+    </table></div>`;
+  _dsatRefreshKpis();
+}
+
+function _dsatUpdateAnnotation(sel){
+  const ri=parseInt(sel.dataset.ri);
+  const type=sel.dataset.type;
+  if(type==="ctrl")dsatRowAnnotations[ri].ctrl=sel.value;
+  else dsatRowAnnotations[ri].doc=sel.value;
+  _dsatRefreshKpis();
+}
+
+function _dsatRefreshKpis(){
+  const total=dsatRowAnnotations.length;
+  const ctrl=dsatRowAnnotations.filter(a=>a.ctrl==="Controllable").length;
+  const unctrl=dsatRowAnnotations.filter(a=>a.ctrl==="Uncontrollable").length;
+  const nodoc=dsatRowAnnotations.filter(a=>a.doc!=="Yes").length;
+  document.getElementById("dsat-kpi-total").textContent=total;
+  document.getElementById("dsat-kpi-ctrl").textContent=ctrl;
+  document.getElementById("dsat-kpi-unctrl").textContent=unctrl;
+  document.getElementById("dsat-kpi-nodoc").textContent=nodoc;
+}
+
+async function _dsatSaveToSP(){
+  if(!_dsatRawSheetName||!dsatRowAnnotations.length)return;
+  showLoading(true);
+  try{
+    const sess=await gFetch("POST",`${GRAPH_BASE}/sites/${_spSiteId}/drive/items/${_spFileId}/workbook/createSession`,{persistChanges:true},{},WRITE_SCOPES);
+    const hdr={"workbook-session-id":sess.id};
+    for(let i=0;i<dsatRowAnnotations.length;i++){
+      const ann=dsatRowAnnotations[i];
+      const rowNum=ann.sheetRow+1;// 1-based for API
+      if(_dsatCtrlColIdx>=0){
+        const colLetter=String.fromCharCode(65+_dsatCtrlColIdx);
+        await gFetch("PATCH",`${GRAPH_BASE}/sites/${_spSiteId}/drive/items/${_spFileId}/workbook/worksheets/${encodeURIComponent(_dsatRawSheetName)}/range(address='${colLetter}${rowNum}')`,{values:[[ann.ctrl]]},hdr,WRITE_SCOPES);
+      }
+      if(_dsatDocColIdx>=0){
+        const colLetter=String.fromCharCode(65+_dsatDocColIdx);
+        await gFetch("PATCH",`${GRAPH_BASE}/sites/${_spSiteId}/drive/items/${_spFileId}/workbook/worksheets/${encodeURIComponent(_dsatRawSheetName)}/range(address='${colLetter}${rowNum}')`,{values:[[ann.doc]]},hdr,WRITE_SCOPES);
+      }
+    }
+    await gFetch("POST",`${GRAPH_BASE}/sites/${_spSiteId}/drive/items/${_spFileId}/workbook/closeSession`,{},hdr,WRITE_SCOPES);
+    showToast("DSAT annotations saved to SharePoint");
+  }catch(e){showToast("DSAT save failed: "+e.message,6000)}
+  finally{showLoading(false)}
+}
+
+// ─── Auto-Refresh ─────────────────────────────────────────────────────────────
+function _startAR(){
+  _arSeconds=AR_INTERVAL;
+  _updateARDisplay();
+  if(_arTimer)clearInterval(_arTimer);
+  _arTimer=setInterval(_tickAR,1000);
+}
+function _tickAR(){
+  if(_arPaused)return;
+  _arSeconds--;
+  _updateARDisplay();
+  if(_arSeconds<=0){_arSeconds=AR_INTERVAL;_refreshData()}
+}
+function _updateARDisplay(){
+  document.getElementById("ar-count").textContent=_arSeconds;
+}
+async function _refreshData(){
+  if(!workbook)return;
+  try{
+    await _loadWorkbook();
+    if(currentSheet)switchTab(currentSheet);
+    showToast("Data refreshed");
+  }catch(e){showToast("Refresh failed: "+e.message,5000)}
+}
+function toggleAR(){
+  _arPaused=!_arPaused;
+  document.getElementById("ar-icon").textContent=_arPaused?"▶":"⏸";
+  document.getElementById("ar-label").textContent=_arPaused?"Resume":"Pause";
+  document.getElementById("btn-ar").classList.toggle("active",_arPaused);
+}
+
+// ─── Insights Panel ──────────────────────────────────────────────────────────
+function toggleInsights(){
+  insightsPanelOpen=!insightsPanelOpen;
+  document.getElementById("insights-panel").classList.toggle("open",insightsPanelOpen);
+  document.getElementById("btn-insights").classList.toggle("active",insightsPanelOpen);
+  if(insightsPanelOpen&&lastInsightCtx)_updateInsightsPanel(lastInsightCtx);
+}
+
+function openSmartmeet(){
+  window.open("https://usd-automation.github.io/smartmeet/","_blank","noopener,noreferrer");
+}
+
+function _computeInsightCtx(headers,rows,sheetName){
+  const csatIdx=_findCsatCol(headers);
+  const dsatIdx=_findDsatCol(headers);
+  const agIdx=findAgentCol(headers);
+  const dateIdx=headers.findIndex(h=>norm(h).includes("closeddate")||norm(h).includes("closed"));
+  let total=rows.length,csat=0,dsat=0;
+  const agMap={};
+  rows.forEach(r=>{
+    if(csatIdx>=0){const v=Number(r[csatIdx]);if(!isNaN(v))csat+=v}
+    if(dsatIdx>=0){const v=Number(r[dsatIdx]);if(!isNaN(v))dsat+=v}
+    if(agIdx>=0){
+      const n=String(r[agIdx]||"").trim();if(!n)return;
+      if(!agMap[n])agMap[n]={csat:0,dsat:0,surveys:0};
+      agMap[n].surveys++;
+      if(csatIdx>=0){const v=Number(r[csatIdx]);if(!isNaN(v))agMap[n].csat+=v}
+      if(dsatIdx>=0){const v=Number(r[dsatIdx]);if(!isNaN(v))agMap[n].dsat+=v}
+    }
+  });
+  const denom=csat+dsat;
+  const csatPct=denom>0?((csat/denom)*100):0;
+  // Weekly trend
+  const weekMap={};
+  if(dateIdx>=0){
+    rows.forEach(r=>{
+      const raw=r[dateIdx];if(!raw)return;
+      const d=raw instanceof Date?raw:new Date(raw);if(isNaN(d))return;
+      const diff=Math.floor((d-WEEKLY_START)/(7*86400000));
+      const wk=`W${diff+1}`;
+      if(!weekMap[wk])weekMap[wk]={c:0,d:0,n:0};
+      weekMap[wk].n++;
+      if(csatIdx>=0){const v=Number(r[csatIdx]);if(!isNaN(v))weekMap[wk].c+=v}
+      if(dsatIdx>=0){const v=Number(r[dsatIdx]);if(!isNaN(v))weekMap[wk].d+=v}
+    });
+  }
+  lastInsightCtx={total,csat:Math.round(csat),dsat:Math.round(dsat),csatPct,agMap,sheetName,weekMap};
+  if(insightsPanelOpen)_updateInsightsPanel(lastInsightCtx);
+}
+
+function _updateInsightsPanel(ctx){
+  const {total,csat,dsat,csatPct,agMap,weekMap}=ctx;
+  document.getElementById("insights-perf").textContent=`Total Surveys: ${total.toLocaleString()}\nCSAT: ${csat.toLocaleString()}\nDSAT: ${dsat.toLocaleString()}\nCSAT %: ${csatPct.toFixed(2)}%`;
+  const sorted=Object.entries(agMap).sort((a,b)=>{
+    const ap=a[1].csat+a[1].dsat>0?(a[1].csat/(a[1].csat+a[1].dsat)):0;
+    const bp=b[1].csat+b[1].dsat>0?(b[1].csat/(b[1].csat+b[1].dsat)):0;
+    return (bp-ap)||((b[1].surveys||0)-(a[1].surveys||0));
+  });
+  document.getElementById("insights-top").textContent=sorted.slice(0,5).map(([n,v])=>{
+    const p=v.csat+v.dsat>0?((v.csat/(v.csat+v.dsat))*100).toFixed(2)+"% CSAT":"—";
+    return `${n}: ${p}`;
+  }).join("\n")||"No data.";
+  const dsatAgents=sorted.filter(([,v])=>v.dsat>0).sort((a,b)=>b[1].dsat-a[1].dsat);
+  document.getElementById("insights-dsat").textContent=dsatAgents.slice(0,5).map(([n,v])=>`${n}: ${v.dsat} DSAT`).join("\n")||"No DSAT this period.";
+  // Weekly
+  const wkeys=Object.keys(weekMap).sort((a,b)=>parseInt(a.slice(1))-parseInt(b.slice(1)));
+  if(wkeys.length){
+    const lines=wkeys.map((k,i)=>{
+      const tot=weekMap[k].c+weekMap[k].d;
+      const pctNum=tot>0?(weekMap[k].c/tot)*100:null;
+      const pctStr=pctNum!==null?pctNum.toFixed(2):"—";
+      const surveys=weekMap[k].n||tot;
+      let delta="";
+      if(i>0&&pctNum!==null){
+        const prevKey=wkeys[i-1];
+        const prevTot=weekMap[prevKey].c+weekMap[prevKey].d;
+        const prevPct=prevTot>0?(weekMap[prevKey].c/prevTot)*100:null;
+        if(prevPct!==null){
+          const diff=pctNum-prevPct;
+          if(Math.abs(diff)>=0.05){
+            delta=` (${diff>0?"+":""}${diff.toFixed(2)}%)`;
+          }
+        }
+      }
+      return `${k}: ${pctStr}% CSAT · ${surveys.toLocaleString()} survey${surveys!==1?"s":""}${delta}`;
+    });
+    document.getElementById("insights-weekly").textContent=lines.join("\n");
+  } else {document.getElementById("insights-weekly").textContent="No weekly data."}
+}
+
+function generateAnalysis(){
+  if(!lastInsightCtx){showToast("Load data first.");return}
+  _updateInsightsPanel(lastInsightCtx);
+  document.getElementById("review-script").value=_buildReviewScript(lastInsightCtx);
+}
+
+function _buildReviewScript(ctx){
+  const {total,csat,dsat,csatPct,agMap,weekMap}=ctx;
+  const notes=(document.getElementById("notes-area")?.value||"").trim();
+  const today=new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+
+  // Sort agents by CSAT% desc, then survey count desc
+  const sorted=Object.entries(agMap).sort((a,b)=>{
+    const ap=a[1].csat+a[1].dsat>0?a[1].csat/(a[1].csat+a[1].dsat):0;
+    const bp=b[1].csat+b[1].dsat>0?b[1].csat/(b[1].csat+b[1].dsat):0;
+    return(bp-ap)||((b[1].surveys||b[1].dsat+b[1].csat)-(a[1].surveys||a[1].dsat+a[1].csat));
+  });
+
+  // Weekly keys in order
+  const wkeys=Object.keys(weekMap).sort((a,b)=>parseInt(a.slice(1))-parseInt(b.slice(1)));
+
+  const L=[];
+  const line=s=>L.push(s);
+  const blank=()=>L.push("");
+
+  // ── Header ──────────────────────────────────────────────────────────────────
+  line("USD Manila Survey Dashboard — Performance Review");
+  line(`Generated: ${today}`);
+  blank();
+
+  // ── Overview ────────────────────────────────────────────────────────────────
+  line("OVERVIEW");
+  line(`Total Surveys : ${total.toLocaleString()}`);
+  line(`CSAT          : ${csat.toLocaleString()} (${csatPct.toFixed(2)}%)`);
+  line(`DSAT          : ${dsat.toLocaleString()}`);
+  blank();
+
+  // ── Highlights ──────────────────────────────────────────────────────────────
+  line("HIGHLIGHTS");
+  const topAgents=sorted.filter(([,v])=>(v.csat+v.dsat)>0).slice(0,3);
+  if(topAgents.length){
+    topAgents.forEach(([n,v])=>{
+      const p=(v.csat/(v.csat+v.dsat)*100).toFixed(2);
+      const cnt=v.csat+v.dsat;
+      line(`• ${n} achieved ${p}% CSAT across ${cnt} survey${cnt!==1?"s":""}.`);
+    });
+  }
+  // Best week
+  if(wkeys.length){
+    let bestWk=null,bestPct=-1;
+    wkeys.forEach(k=>{const tot=weekMap[k].c+weekMap[k].d;const p=tot>0?weekMap[k].c/tot*100:-1;if(p>bestPct){bestPct=p;bestWk=k;}});
+    if(bestWk)line(`• ${bestWk} was the strongest week at ${bestPct.toFixed(2)}% CSAT.`);
+  }
+  // Positive WoW trend
+  if(wkeys.length>=2){
+    const last=wkeys[wkeys.length-1],prev=wkeys[wkeys.length-2];
+    const lt=weekMap[last].c+weekMap[last].d,pt=weekMap[prev].c+weekMap[prev].d;
+    if(lt>0&&pt>0){const diff=weekMap[last].c/lt*100-weekMap[prev].c/pt*100;if(diff>0)line(`• Week-over-week CSAT is improving: ${prev} → ${last} (+${diff.toFixed(2)}%).`);}
+    // Survey count increase
+    const ln=weekMap[last].n||lt,pn=weekMap[prev].n||pt;
+    if(ln>pn)line(`• Survey returns increased from ${pn.toLocaleString()} (${prev}) to ${ln.toLocaleString()} (${last}) — up ${(ln-pn).toLocaleString()} WoW.`);
+  }
+  if(csatPct>=95)line(`• Overall CSAT of ${csatPct.toFixed(2)}% meets or exceeds the excellence threshold.`);
+  blank();
+
+  // ── Lowlights ───────────────────────────────────────────────────────────────
+  line("LOWLIGHTS");
+  let hasLow=false;
+  // Agents with DSAT
+  const dsatAgents=sorted.filter(([,v])=>v.dsat>0).sort((a,b)=>b[1].dsat-a[1].dsat);
+  if(dsatAgents.length){
+    dsatAgents.slice(0,3).forEach(([n,v])=>{
+      line(`• ${n} recorded ${v.dsat} DSAT${v.dsat!==1?"s":""} — a coaching session is recommended.`);
+      hasLow=true;
+    });
+  }
+  // Agents below 88% CSAT
+  const lowCsat=sorted.filter(([,v])=>{const t=v.csat+v.dsat;return t>0&&(v.csat/t*100)<88;});
+  if(lowCsat.length){
+    lowCsat.slice(0,3).forEach(([n,v])=>{
+      const p=(v.csat/(v.csat+v.dsat)*100).toFixed(2);
+      line(`• ${n} is below the 88% threshold at ${p}% CSAT — performance support needed.`);
+      hasLow=true;
+    });
+  }
+  // Negative WoW trend + survey count decrease
+  if(wkeys.length>=2){
+    const last=wkeys[wkeys.length-1],prev=wkeys[wkeys.length-2];
+    const lt=weekMap[last].c+weekMap[last].d,pt=weekMap[prev].c+weekMap[prev].d;
+    if(lt>0&&pt>0){const diff=weekMap[last].c/lt*100-weekMap[prev].c/pt*100;if(diff<0){line(`• CSAT declined from ${prev} to ${last} (${diff.toFixed(2)}%) — monitor closely.`);hasLow=true;}}
+    // Survey count decrease
+    const ln=weekMap[last].n||lt,pn=weekMap[prev].n||pt;
+    if(ln<pn){line(`• Survey returns dropped from ${pn.toLocaleString()} (${prev}) to ${ln.toLocaleString()} (${last}) — down ${(pn-ln).toLocaleString()} WoW. Consider follow-up to improve response rate.`);hasLow=true;}
+  }
+  if(!hasLow)line("• No significant lowlights this period.");
+  blank();
+
+  // ── Notes ───────────────────────────────────────────────────────────────────
+  if(notes){line("NOTES");line(notes);blank();}
+
+  return L.join("\n").trimEnd();
+}
+
+function copyReviewScript(){
+  const txt=document.getElementById("review-script").value||"";
+  if(!txt.trim()){showToast("Generate a script first.");return}
+  navigator.clipboard.writeText(txt).then(()=>showToast("Script copied to clipboard")).catch(()=>showToast("Copy failed"));
+}
+
+
+function copyAnalysis(){
+  const perf=document.getElementById("insights-perf").textContent||"";
+  const weekly=document.getElementById("insights-weekly").textContent||"";
+  const top=document.getElementById("insights-top").textContent||"";
+  const dsat=document.getElementById("insights-dsat").textContent||"";
+  const notes=document.getElementById("notes-area").value||"";
+  const script=document.getElementById("review-script").value||"";
+  const parts=["=== Dashboard Analysis ===",""];
+  if(perf&&perf!=="—")parts.push("PERFORMANCE ANALYSIS",perf,"");
+  if(weekly&&weekly!=="—"&&weekly!=="No weekly data.")parts.push("WEEKLY TREND",weekly,"");
+  if(top&&top!=="—"&&top!=="No data.")parts.push("TOP PERFORMERS",top,"");
+  if(dsat&&dsat!=="—"&&dsat!=="No DSAT this period.")parts.push("DSAT ALERTS",dsat,"");
+  if(notes.trim())parts.push("NOTES",notes.trim(),"");
+  if(script.trim())parts.push("PERFORMANCE REVIEW SCRIPT",script.trim(),"");
+  parts.push("Dashboard: "+DASHBOARD_URL);
+  const text=parts.join("\n").trim();
+  navigator.clipboard.writeText(text).then(()=>showToast("Analysis copied to clipboard")).catch(()=>showToast("Copy failed"));
+}
+
+// ─── DOMContentLoaded ─────────────────────────────────────────────────────────
+window.addEventListener("DOMContentLoaded",()=>{
+  const btn=document.getElementById("btn-login");
+  msalReady.then(async instance=>{
+    // Redirect flow: process any pending auth code before enabling the button.
+    // Wrap in a timeout so a stalled network call never leaves the button stuck.
+    const _hrp=instance.handleRedirectPromise();
+    const _timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error("hrp-timeout")),8000));
+    try{
+      const resp=await Promise.race([_hrp,_timeout]);
+      if(resp){currentAccount=resp.account;await initApp();return}
+      const accs=instance.getAllAccounts();
+      if(accs.length){currentAccount=accs[0];await initApp();return}
+    }catch(e){
+      console.warn("[MSAL]",e.message);
+      _clearMsalState();
+    }
+    btn.disabled=false;
+    btn.textContent="Sign in with Microsoft";
+  }).catch(e=>{
+    btn.textContent="Authentication unavailable";
+    document.getElementById("login-error").textContent="Could not load authentication library. Please reload.";
+    console.error("msalReady failed:",e);
+  });
+});
+</script>
+</body>
+</html>
